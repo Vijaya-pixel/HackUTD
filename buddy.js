@@ -184,6 +184,5 @@ function BUDDY_ACTIONS(v) {
     trapLesson: () => { S.trap = null; openLesson(v).catch(fail); },
   };
 }
-document.addEventListener('mouseover', e => { const el = e.target.closest && e.target.closest('[data-hover="quizOpen"]'); if (el) openQuiz(); });
-setInterval(quizTick, 1000);
+// Quick questions retired: learning happens in the Quest minigames now.
 document.addEventListener('buddy3d-ready', () => { if (typeof current === 'function' && current() === 'learn') render(); });

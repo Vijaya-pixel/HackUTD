@@ -71,6 +71,55 @@ export async function nextQuestion(lineId) {
   return { id: pick.id, cat: pick.cat, q: pick.q, options: pick.options };
 }
 
+/* ---------- ScamShield Quest: weekly T-Mobile tasks ---------- */
+// One task per checkpoint per week, picked at random from these. Points scale with length and importance.
+const TASKS = {
+  texttrap: [{ id: 'tt-clear', label: 'Sort 8 texts before the timer', points: 25, need: 1 }, { id: 'tt-perfect', label: 'A perfect Text Trap round', points: 50, need: 3 }],
+  linklens: [{ id: 'll-clear', label: 'Spot 4 of 6 real links', points: 25, need: 1 }, { id: 'll-perfect', label: 'All six links right', points: 45, need: 3 }],
+  hangup: [{ id: 'hu-clear', label: 'Get through three scam calls', points: 30, need: 1 }, { id: 'hu-sharp', label: 'Hang up at the red flag, all three calls', points: 50, need: 2 }],
+  codekeeper: [{ id: 'ck-clear', label: 'Keep your code through three asks', points: 35, need: 1 }, { id: 'ck-clean', label: 'Code Keeper with no risky replies', points: 50, need: 3 }],
+  familysos: [{ id: 'fs-clear', label: 'Verify the family emergency', points: 35, need: 1 }, { id: 'fs-clean', label: 'Family SOS without sending a cent', points: 50, need: 3 }],
+  storm: [{ id: 'st-clear', label: 'Clear the Scam Storm boss', points: 60, need: 1 }, { id: 'st-perfect', label: 'Scam Storm, ten for ten', points: 80, need: 3 }],
+};
+export const WEEK_GOAL = 180;
+export const WEEK_REWARD = '500 T-Mobile Tuesdays points';
+export function weekKey(d = new Date()) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = date.getUTCDay() || 7; date.setUTCDate(date.getUTCDate() + 4 - day);
+  const y = date.getUTCFullYear(), w = Math.ceil(((date - Date.UTC(y, 0, 1)) / 86400000 + 1) / 7);
+  return `${y}-W${String(w).padStart(2, '0')}`;
+}
+export async function weekTasks(lineId) {
+  const week = weekKey();
+  let rows = (await q('SELECT node, task_id, label, points, need_stars, done_at FROM game_tasks WHERE line_id = $1 AND week = $2', [lineId, week])).rows;
+  if (!rows.length) {
+    for (const [node, list] of Object.entries(TASKS)) {
+      const t = list[Math.floor(Math.random() * list.length)];
+      await q('INSERT INTO game_tasks (line_id, week, node, task_id, label, points, need_stars) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING', [lineId, week, node, t.id, t.label, t.points, t.need]);
+    }
+    rows = (await q('SELECT node, task_id, label, points, need_stars, done_at FROM game_tasks WHERE line_id = $1 AND week = $2', [lineId, week])).rows;
+  }
+  const reward = await one('SELECT reward, earned_at FROM game_rewards WHERE line_id = $1 AND week = $2', [lineId, week]);
+  const points = rows.filter(r => r.done_at).reduce((a, r) => a + r.points, 0);
+  return { key: week, goal: WEEK_GOAL, points, reward: WEEK_REWARD, rewardEarned: !!reward, earnedAt: reward?.earned_at || null,
+    tasks: rows.map(r => ({ node: r.node, taskId: r.task_id, label: r.label, points: r.points, needStars: r.need_stars, done: !!r.done_at })) };
+}
+/** A cleared stop completes this week's task for that checkpoint when the star requirement is met. */
+async function completeTask(lineId, node, stars) {
+  const week = weekKey();
+  const t = await one('SELECT * FROM game_tasks WHERE line_id = $1 AND week = $2 AND node = $3', [lineId, week, node]);
+  if (!t || t.done_at || stars < t.need_stars) return { completed: false, justEarned: false };
+  await q('UPDATE game_tasks SET done_at = now() WHERE line_id = $1 AND week = $2 AND node = $3', [lineId, week, node]);
+  const w = await weekTasks(lineId);
+  let justEarned = false;
+  if (w.points >= WEEK_GOAL && !w.rewardEarned) {
+    await q('INSERT INTO game_rewards (line_id, week, reward) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [lineId, week, WEEK_REWARD]);
+    justEarned = true;
+    petEvent(lineId, 'bonus', `Weekly goal reached: ${WEEK_REWARD}`, { week }).catch(() => {});
+  }
+  return { completed: true, points: t.points, label: t.label, justEarned };
+}
+
 /* ---------- ScamShield Quest progress ---------- */
 export async function gameProgress(lineId) {
   const rows = (await q('SELECT node, stars, best, plays, updated FROM game_progress WHERE line_id = $1', [lineId])).rows;
@@ -78,7 +127,7 @@ export async function gameProgress(lineId) {
 }
 
 export function registerPet(app) {
-  app.get('/api/game/:lineId', async c => c.json({ progress: await gameProgress(c.req.param('lineId')), pet: await petState(c.req.param('lineId')) }));
+  app.get('/api/game/:lineId', async c => c.json({ progress: await gameProgress(c.req.param('lineId')), pet: await petState(c.req.param('lineId')), week: await weekTasks(c.req.param('lineId')) }));
   app.post('/api/game/:lineId/result', async c => {
     const lineId = c.req.param('lineId');
     const { node, title, score = 0, max = 1, stars = 0, win = false } = await c.req.json();
@@ -87,7 +136,8 @@ export function registerPet(app) {
              ON CONFLICT (line_id, node) DO UPDATE SET stars = GREATEST(game_progress.stars, EXCLUDED.stars), best = GREATEST(game_progress.best, EXCLUDED.best), plays = game_progress.plays + 1, updated = now()`,
       [lineId, node, Math.max(0, Math.min(3, Number(stars) || 0)), Number(score) || 0]);
     const state = await petEvent(lineId, win ? 'game_win' : 'game_loss', `${win ? 'Cleared' : 'Lost'} ${title || node}: ${score}/${max}`, { node, score, max, stars });
-    return c.json({ progress: await gameProgress(lineId), pet: state });
+    const task = win ? await completeTask(lineId, node, Number(stars) || 0) : { completed: false, justEarned: false };
+    return c.json({ progress: await gameProgress(lineId), pet: state, task, week: await weekTasks(lineId) });
   });
   app.get('/api/pet/:lineId', async c => { const s = await petState(c.req.param('lineId')); return s ? c.json(s) : c.json({ error: 'line not found' }, 404); });
   app.get('/api/pet/:lineId/quiz', async c => c.json(await nextQuestion(c.req.param('lineId'))));

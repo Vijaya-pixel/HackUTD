@@ -73,7 +73,7 @@ const CHATS = {
 function gameState() { if (!S.game) S.game = { progress: null, current: null, run: null, loading: false }; return S.game; }
 async function loadGame() {
   const g = gameState(); if (g.loading) return; g.loading = true;
-  try { const r = await api.get(`/game/${curLine().lineId}`); g.progress = r.progress || {}; if (r.pet) S.pet = r.pet; if (!g.current) g.current = defaultNode(); }
+  try { const r = await api.get(`/game/${curLine().lineId}`); g.progress = r.progress || {}; g.week = r.week || null; if (r.pet) S.pet = r.pet; if (!g.current) g.current = defaultNode(); }
   catch (e) { g.progress = g.progress || {}; }
   g.loading = false; render();
 }
@@ -98,7 +98,7 @@ const walkTimers = {};
 function walkTo(id) {
   const g = gameState(); if (g.run) return;
   const n = QUEST[nodeIndex(id)]; if (!n) return;
-  const p = petPos(); if (p.at === id) { g.current = id; render(); return; }
+  const p = petPos(); if (p.at === id) { g.current = id; return arrive(id); }
   const dx = Math.sign(n.x - p.x), dist = Math.hypot(n.x - p.x, (n.y - p.y) * 1.4), ms = Math.max(600, Math.min(1500, dist * 22));
   p.x = n.x; p.y = n.y; p.at = id;
   try { localStorage.setItem(posKey(), JSON.stringify(p)); } catch {}
@@ -107,29 +107,40 @@ function walkTo(id) {
   if (av) { av.style.transitionDuration = ms + 'ms'; av.style.setProperty('--hops', String(Math.max(2, Math.round(ms / 300)))); av.style.left = n.x + '%'; av.style.top = n.y + '%'; av.classList.remove('travel'); void av.offsetWidth; av.style.animationDuration = ms + 'ms'; av.classList.add('travel'); }
   document.querySelectorAll('.quest .node').forEach(el => el.classList.toggle('target', el.dataset.val === id));
   clearTimeout(walkTimers.arrive);
-  walkTimers.arrive = setTimeout(() => { if (window.Buddy3D) window.Buddy3D.face(0); g.current = id; render(); }, ms + 60);
+  walkTimers.arrive = setTimeout(() => { if (window.Buddy3D) window.Buddy3D.face(0); g.current = id; arrive(id); }, ms + 60);
 }
+function arrive(id) {
+  const g = gameState(), i = nodeIndex(id);
+  if (!unlocked(i)) { render(); const av = document.querySelector('.quest .avatar'); if (av) { av.classList.add('nope'); setTimeout(() => av.classList.remove('nope'), 600); } toast(`Clear ${QUEST[i - 1].title} first`); return; }
+  g.diving = id; render();
+  clearTimeout(walkTimers.dive); walkTimers.dive = setTimeout(() => startRun(id), 700);
+}
+function taskFor(id) { return gameState().week?.tasks?.find(t => t.node === id) || null; }
 function questMap() {
   const g = gameState();
-  if (!g.progress) { loadGame(); return `<div class="quest"><div class="map loading"><div class="sky"></div><p>Loading your map…</p></div></div>`; }
-  const P = S.pet, p = petPos(), here = nearNode(); g.current = here?.id || null;
+  if (!g.progress) { loadGame(); return `<div class="quest"><div class="map loading"><p>Loading your map…</p></div></div>`; }
+  const P = S.pet, p = petPos(), here = nearNode(), W = g.week; g.current = here?.id || null;
   const stars = n => { const s = g.progress[n.id]?.stars || 0; return `<div class="stars">${[1, 2, 3].map(i => `<span class="${i <= s ? 'on' : ''}">★</span>`).join('')}</div>`; };
-  const nodes = QUEST.map((n, i) => { const un = unlocked(i), done = (g.progress[n.id]?.stars || 0) > 0; return `<button class="node cloudnode ${un ? '' : 'locked'} ${done ? 'done' : ''} ${here?.id === n.id ? 'current' : ''} ${n.boss ? 'boss' : ''}" style="left:${n.x}%;top:${n.y}%;--c:${n.color}" data-act="questSelect" data-val="${n.id}"><div class="cloudshape"><i></i><i></i><i></i><div class="orb">${ico(un ? n.icon : 'lock')}</div></div>${stars(n)}<div class="nl">${n.title}</div></button>`; }).join('');
-  const reaction = S.petAnim?.kind === 'heal' ? 'celebrating' : S.petAnim ? 'surprised' : (S.quiz?.open && !S.quiz.result) ? 'determined' : null;
+  const nodes = QUEST.map((n, i) => { const un = unlocked(i), done = (g.progress[n.id]?.stars || 0) > 0, t = taskFor(n.id); return `<button class="node cloudnode ${un ? '' : 'locked'} ${done ? 'done' : ''} ${here?.id === n.id ? 'current' : ''} ${n.boss ? 'boss' : ''}" style="left:${n.x}%;top:${n.y}%;--c:${n.color}" data-act="questSelect" data-val="${n.id}"><div class="cloudshape ${g.diving === n.id ? 'puff' : ''}"><i></i><i></i><i></i><div class="orb">${ico(un ? n.icon : 'lock')}</div>${t ? `<div class="pts ${t.done ? 'done' : ''}">${t.done ? ico('check') : '+' + t.points}</div>` : ''}</div>${stars(n)}<div class="nl">${n.title}</div></button>`; }).join('');
+  const reaction = S.petAnim?.kind === 'heal' ? 'celebrating' : S.petAnim ? 'surprised' : null;
+  const emerge = g.emerge; g.emerge = false;
   setTimeout(() => {
     const av = document.querySelector('.quest .avatar'); if (!av) return;
     const el = av.querySelector('.pet3d'); if (el && window.Buddy3D && P && window.Buddy3D.attach(el, { health: P.health, reaction })) el.classList.add('live');
     const bar = document.querySelector('.quest .hud .fill[data-to]'); if (bar) requestAnimationFrame(() => { bar.style.width = bar.dataset.to + '%'; });
+    const wk = document.querySelector('.quest .weekbar .fill[data-to]'); if (wk) requestAnimationFrame(() => { wk.style.width = wk.dataset.to + '%'; });
   }, 0);
   const energy = P ? P.health : 0, eCls = energy >= 60 ? 'good' : energy >= 40 ? 'mid' : 'low';
+  const pct = W ? Math.min(100, Math.round(W.points / W.goal * 100)) : 0;
   let card;
   if (here) {
-    const i = nodeIndex(here.id), prog = g.progress[here.id], locked = !unlocked(i);
+    const i = nodeIndex(here.id), prog = g.progress[here.id], locked = !unlocked(i), t = taskFor(here.id);
     card = `<div class="nodecard" style="--c:${here.color}">
       <div class="nc-top"><div class="orb">${ico(here.icon)}</div><div class="nc-t"><div class="eyebrow">${here.boss ? 'Boss cloud' : `Cloud ${i + 1} of ${QUEST.length}`} · ${esc(here.teaches)}</div><div class="big">${here.title}</div></div>${stars(here)}</div>
+      ${t ? `<div class="task ${t.done ? 'done' : ''}"><div class="tp">${t.done ? ico('check') : '+' + t.points}</div><div class="tt"><div class="tl">This week's T-Mobile task</div><div class="tn">${esc(t.label)}</div></div>${t.done ? '<div class="tdone">Done</div>' : `<div class="tneed">${'★'.repeat(t.needStars)}</div>`}</div>` : ''}
       <p class="desc">${esc(here.blurb)}</p>
       ${prog ? `<div class="nc-meta">Best ${prog.best} · played ${prog.plays}×</div>` : ''}
-      ${locked ? `<button class="btn outline" disabled>${ico('lock')} Clear ${QUEST[i - 1].title} first</button>` : `<button class="btn primary" data-act="questPlay" data-val="${here.id}">${ico('sparkles')} ${prog ? 'Play again' : 'Play'}</button>`}
+      ${locked ? `<button class="btn outline" disabled>${ico('lock')} Clear ${QUEST[i - 1].title} first</button>` : `<button class="btn primary" data-act="questSelect" data-val="${here.id}">${ico('sparkles')} ${prog ? 'Jump in again' : 'Jump in'}</button>`}
     </div>`;
   } else {
     const next = QUEST.find((n, i) => unlocked(i) && !(g.progress[n.id]?.stars)) || QUEST[QUEST.length - 1];
@@ -141,15 +152,18 @@ function questMap() {
       <div class="e"><div class="lbl"><span>${ico('heart')} Buddy's energy</span><b>${energy}</b></div><div class="bar"><div class="fill ${eCls}" style="width:${S.petAnim?.from ?? energy}%" data-to="${energy}"></div></div></div>
       <div class="pill">Lv ${P?.level || 1}</div><div class="pill star">★ ${totalStars()}/${QUEST.length * 3}</div>
     </div>
+    ${W ? `<div class="weekbar ${W.rewardEarned ? 'earned' : ''}">
+      <div class="wb-top"><div class="wb-t">${ico('tmo')} <b>This week's tasks</b> <span>${W.key.replace('-W', ' · week ')}</span></div><div class="wb-pts"><b>${W.points}</b>/${W.goal} pts</div></div>
+      <div class="bar"><div class="fill" style="width:0%" data-to="${pct}"></div><div class="goal">${ico('gift')}</div></div>
+      <div class="wb-reward">${W.rewardEarned ? `${ico('checkCircle')} Reward earned: <b>${esc(W.reward)}</b>` : `Fill the bar to earn <b>${esc(W.reward)}</b> · ${W.tasks.filter(t => t.done).length}/${W.tasks.length} tasks done`}</div>
+    </div>` : ''}
     <div class="map">
-      <div class="sky"><i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i></div>
       <div class="hills"></div>
       <svg class="road dotted" viewBox="0 0 100 100" preserveAspectRatio="none"><path class="dots" d="${cloudPath()}"/></svg>
       ${nodes}
-      <div class="avatar" style="left:${p.x}%;top:${p.y}%"><div class="pet3d">${petSvg(P?.mood || 'happy')}</div></div>
+      <div class="avatar ${g.diving ? 'dive' : emerge ? 'emerge' : ''}" style="left:${p.x}%;top:${p.y}%"><div class="pet3d">${petSvg(P?.mood || 'happy')}</div></div>
       <button class="signpost" data-act="practice" data-val="imessage">${ico('phone')}<span>Field test<br><small>Text my phone</small></span></button>
     </div>
-    ${S.quiz ? `<div class="speech">${bubbleHtml(P || { mood: 'happy' }, S.petAnim, S.trap)}</div>` : ''}
     ${card}
   </div>`;
 }
@@ -164,7 +178,7 @@ function startRun(id) {
   if (n.kind === 'links') { run.items = shuffle(LINK_ROUNDS); run.max = run.items.length; run.per = 12000; }
   if (n.kind === 'call') { run.items = CALLS; run.max = CALLS.length * 3; run.call = 0; run.shown = 0; run.per = 0; }
   if (n.kind === 'chat') { run.chat = CHATS[n.id]; run.items = run.chat.steps; run.max = run.items.length; run.hist = []; run.per = 0; }
-  gameState().run = run; S.quiz = null;
+  gameState().run = run; gameState().diving = null;
   armTimer(); renderOverlay();
 }
 function armTimer() {
@@ -237,12 +251,12 @@ async function finishRun() {
   run.win = run.stars >= 1; run.phase = 'end'; run.posting = true; renderOverlay();
   try {
     const r = await api.post(`/game/${curLine().lineId}/result`, { node: run.node.id, title: run.node.title, score: run.score, max: run.max, stars: run.stars, win: run.win });
-    gameState().progress = r.progress; run.delta = run.win ? 8 : -5;
+    gameState().progress = r.progress; gameState().week = r.week || gameState().week; run.task = r.task || null; run.delta = run.win ? 8 : -5;
   } catch (e) { run.error = e.message; }
   run.posting = false; renderOverlay(); render();
 }
 function closeRun(again) {
-  const g = gameState(); const id = g.run?.node.id; clearInterval(gameTimers.tick); clearTimeout(gameTimers.next); g.run = null;
+  const g = gameState(); const id = g.run?.node.id; clearInterval(gameTimers.tick); clearTimeout(gameTimers.next); g.run = null; g.diving = null; g.emerge = true;
   if (again && id) return startRun(id);
   if (id && g.progress?.[id]?.stars) { const i = nodeIndex(id); if (i + 1 < QUEST.length && unlocked(i + 1)) g.current = QUEST[i + 1].id; }
   renderOverlay(); render();
@@ -253,14 +267,17 @@ function arenaHtml() {
   const run = gameState().run; if (!run) return '';
   const n = run.node;
   const dots = run.kind === 'call' ? run.items.map((_, i) => `<i class="${i < run.call ? 'done' : i === run.call ? 'cur' : ''}"></i>`).join('') : run.items.map((_, i) => `<i class="${i < run.i ? (run.log[i]?.ok ? 'done' : 'miss') : i === run.i ? 'cur' : ''}"></i>`).join('');
-  const top = `<div class="atop"><button class="icon-btn" data-act="questQuit" aria-label="Quit">${ico('x')}</button><div class="at"><div class="eyebrow">${n.boss ? 'Boss stop' : 'Stop ' + (nodeIndex(n.id) + 1)}</div><div class="t">${n.title}</div></div><div class="score">${run.score}<small>/${run.max}</small></div></div><div class="dots">${dots}</div>${run.per ? `<div class="timer"><div class="fill"></div></div>` : ''}`;
-  if (run.phase === 'end') return `<div class="arena end" style="--c:${n.color}">${top}<div class="stage"><div class="result ${run.win ? 'win' : 'loss'}">
+  const top = `<div class="atop"><button class="cancel" data-act="questQuit">${ico('x')} Cancel</button><div class="at"><div class="eyebrow">${n.boss ? 'Boss stop' : 'Stop ' + (nodeIndex(n.id) + 1)}</div><div class="t">${n.title}</div></div><div class="score">${run.score}<small>/${run.max}</small></div></div><div class="dots">${dots}</div>${run.per ? `<div class="timer"><div class="fill"></div></div>` : ''}`;
+  const task = run.task, earned = task?.justEarned;
+  if (run.phase === 'end') return `<div class="arena-bg"></div><div class="arena modal end ${earned ? 'celebrate' : ''}" style="--c:${n.color}">${earned ? '<div class="confetti">' + Array.from({ length: 18 }, (_, i) => `<i style="left:${(i * 53) % 100}%;animation-delay:${(i % 6) * .15}s;background:${['#E20074', '#F5B301', '#1E9E5A', '#7A3BFF'][i % 4]}"></i>`).join('') + '</div>' : ''}${top}<div class="stage"><div class="result ${run.win ? 'win' : 'loss'}">
       <div class="starsbig">${[1, 2, 3].map(i => `<span class="${i <= run.stars ? 'on' : ''}" style="animation-delay:${i * .18}s">★</span>`).join('')}</div>
       <h3>${run.win ? (run.stars === 3 ? 'Flawless' : 'Cleared') : run.lost ? 'Buddy took the hit' : 'Not this time'}</h3>
       <p>${run.lost ? 'You handed over the one thing the scammer wanted.' : `${run.score} of ${run.max}. ${run.win ? n.title + ' is cleared.' : 'Half or more clears the stop.'}`}</p>
       <div class="delta ${run.win ? 'pos' : 'neg'}">${run.posting ? 'Saving…' : run.error ? 'Could not save: ' + esc(run.error) : (run.win ? '+8' : '-5') + ' energy'}</div>
+      ${task?.completed ? `<div class="taskdone">${ico('tmo')} T-Mobile task done: <b>+${task.points} pts</b> · ${esc(task.label)}</div>` : run.win && taskFor(n.id) && !taskFor(n.id).done ? `<div class="taskmiss">This week's task needs ${'★'.repeat(taskFor(n.id).needStars)} here for +${taskFor(n.id).points} pts</div>` : ''}
+      ${earned ? `<div class="reward">${ico('gift')}<div><div class="rl">Weekly goal reached</div><div class="rn">${esc(gameState().week?.reward || 'T-Mobile reward')}</div></div></div>` : ''}
       ${run.log.filter(l => !l.ok).length ? `<div class="recap"><div class="lbl">What to remember</div>${run.log.filter(l => !l.ok).slice(0, 3).map(l => `<div class="feat">${ico('alert')}<span>${esc(l.item.why || l.item.choices?.find(c => !c.good)?.why || '')}</span></div>`).join('')}</div>` : ''}
-    </div></div><div class="actrl"><button class="btn primary" data-act="questClose">Back to the map</button><button class="btn outline" data-act="questAgain">Play again</button></div></div>`;
+    </div></div><div class="actrl"><button class="btn primary" data-act="questClose">Back to the game</button><button class="btn outline" data-act="questAgain">Play again</button></div></div>`;
   const fb = run.fb ? `<div class="fb ${run.fb.ok ? 'ok' : 'bad'}"><div class="fbt">${ico(run.fb.ok ? 'checkCircle' : 'alert')} ${esc(run.fb.title)}</div>${run.fb.label ? `<div class="fbl">${esc(run.fb.label)}</div>` : ''}<p>${esc(run.fb.why)}</p></div>` : '';
   let stage = '', ctrl = '';
   if (run.kind === 'sorter' || run.kind === 'storm') {
@@ -284,7 +301,7 @@ function arenaHtml() {
     stage = `<div class="chatlog">${run.hist.map(h => `<div class="msg them">${esc(h.them)}</div><div class="msg me ${h.ok ? '' : 'bad'}">${esc(h.you)}</div>`).join('')}<div class="msg them new">${esc(it.them)}</div></div>${fb}`;
     ctrl = `<div class="choices">${it.choices.map((c, i) => `<button class="chip" data-act="questAnswer" data-val="${i}" ${run.fb ? 'disabled' : ''}>${esc(c.t)}</button>`).join('')}</div>`;
   }
-  return `<div class="arena kind-${run.kind}" style="--c:${n.color}">${top}<div class="stage">${stage}</div><div class="actrl">${ctrl}</div></div>`;
+  return `<div class="arena-bg"></div><div class="arena modal kind-${run.kind}" style="--c:${n.color}">${top}<div class="stage">${stage}</div><div class="actrl">${ctrl}</div></div>`;
 }
 
 function GAME_ACTIONS(v) {

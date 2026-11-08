@@ -848,3 +848,6 @@ textarea.area{width:100%;border:1px solid var(--line);border-radius:12px;padding
 .stat-row{margin-top:12px;padding:10px 4px}
 .stat-row .n{font-size:19px}
 .stat-row .l{font-size:11px;margin-top:2px}
+.arena .taskdone{display:block;text-align:center}
+.arena .taskdone svg{vertical-align:-4px;margin-right:4px}
+.quest .avatar.dive{pointer-events:none}
