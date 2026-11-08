@@ -11,7 +11,7 @@ const RULES: Rule[] = [
   // ── Urgency ───────────────────────────────────────────────────────────────
   {
     category: "urgency",
-    pattern: /\b(within\s+\d+\s*(hour|hr|minute|min)|expires?\s+in|act\s+now|immediately|right\s+now|urgent|asap|time\s+is\s+running\s+out|limited\s+time|today\s+only|before\s+midnight|final\s+notice|last\s+chance)\b/gi,
+    pattern: /\b(within\s+\d+\s*(hour|hr|minute|min)s?|expires?\s+in|act\s+now|immediately|right\s+now|urgent|asap|time\s+is\s+running\s+out|limited\s+time|today\s+only|before\s+midnight|final\s+notice|last\s+chance)\b/gi,
     explanation: "Artificial time pressure designed to prevent careful thinking",
     weight: 0.35,
   },
@@ -37,7 +37,7 @@ const RULES: Rule[] = [
   },
   {
     category: "unusual_payment_or_code",
-    pattern: /\b(\$\s*\d+(\.\d{1,2})?\s*(fee|deposit|charge|payment|processing|refundable))\b/gi,
+    pattern: /\b(\$\s*\d+(\.\d{1,2})?\s*(\w+\s+)?(fee|deposit|charge|payment|processing|refundable))\b/gi,
     explanation: "Unexpected fee request is a scam hallmark",
     weight: 0.5,
   },

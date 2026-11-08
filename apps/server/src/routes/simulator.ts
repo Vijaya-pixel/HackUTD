@@ -23,7 +23,7 @@ app.get("/simulator/:sessionId/messages", (c) => {
 app.post("/simulator/send", zValidator("json", SimulatorSendSchema), async (c) => {
   const { sessionId, text } = c.req.valid("json");
 
-  const session = getSessionById(sessionId);
+  const session = await getSessionById(sessionId);
   if (!session) return c.json({ error: "Session not found" }, 404);
 
   const scenario = await loadScenario(session.scenarioId);

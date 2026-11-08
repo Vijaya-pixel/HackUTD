@@ -7,7 +7,7 @@ const app = new Hono();
 
 app.get("/lesson/:sessionId", async (c) => {
   const sessionId = c.req.param("sessionId");
-  const session = getSessionById(sessionId);
+  const session = await getSessionById(sessionId);
   if (!session) return c.json({ error: "Session not found" }, 404);
 
   if (session.lesson) {

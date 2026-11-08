@@ -27,7 +27,7 @@ export function createRedirectRouter(channel: MessagingChannel) {
   app.get("/learn/:sessionId", async (c) => {
     const sessionId = c.req.param("sessionId");
     const { getSessionById } = await import("../db/repository.js");
-    const session = getSessionById(sessionId);
+    const session = await getSessionById(sessionId);
     if (!session || !session.lesson) {
       return c.html(notFoundPage(), 404);
     }

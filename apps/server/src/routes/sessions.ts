@@ -18,10 +18,10 @@ export function createSessionsRouter(channel: MessagingChannel) {
   app.post("/practice/trigger", zValidator("json", TriggerPracticeRequestSchema), async (c) => {
     const { userId, scenarioId } = c.req.valid("json");
 
-    const user = getUserById(userId);
+    const user = await getUserById(userId);
     if (!user) return c.json({ error: "User not found" }, 404);
 
-    const consent = getActiveConsent(userId);
+    const consent = await getActiveConsent(userId);
     if (!consent) return c.json({ error: "No active consent" }, 403);
 
     // Pick scenario
@@ -38,7 +38,7 @@ export function createSessionsRouter(channel: MessagingChannel) {
     }
 
     // Check daily limit
-    const todaySessions = getUserSessions(userId).filter((s) => {
+    const todaySessions = (await getUserSessions(userId)).filter((s) => {
       const d = new Date(s.startedAt);
       const now = new Date();
       return d.toDateString() === now.toDateString();
@@ -57,7 +57,7 @@ export function createSessionsRouter(channel: MessagingChannel) {
 
   app.get("/sessions/:userId", async (c) => {
     const userId = c.req.param("userId");
-    const sessions = getUserSessions(userId).map((s) => ({
+    const sessions = (await getUserSessions(userId)).map((s) => ({
       id: s.id,
       scenarioId: s.scenarioId,
       state: s.state,
@@ -70,13 +70,13 @@ export function createSessionsRouter(channel: MessagingChannel) {
 
   app.get("/sessions/:userId/skills", async (c) => {
     const userId = c.req.param("userId");
-    const summary = getSkillsSummary(userId);
+    const summary = await getSkillsSummary(userId);
     return c.json(summary);
   });
 
   app.get("/session/:sessionId", async (c) => {
     const sessionId = c.req.param("sessionId");
-    const session = getSessionById(sessionId);
+    const session = await getSessionById(sessionId);
     if (!session) return c.json({ error: "Not found" }, 404);
     return c.json(session);
   });

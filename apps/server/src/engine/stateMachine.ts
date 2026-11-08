@@ -32,7 +32,7 @@ export async function startSession(
   const practiceLink = `${ctx.baseUrl}/p/${token}`;
   const opener = scenario.opener.replace("{{PRACTICE_LINK}}", practiceLink);
 
-  const session = createSession({
+  const session = await createSession({
     id,
     userId,
     scenarioId: scenario.id,
@@ -58,12 +58,12 @@ export async function startSession(
     })),
     sentAt: now,
   };
-  saveMessage(id, openerMsg);
+  await saveMessage(id, openerMsg);
 
   // Send the opener
   await ctx.channel.send(userId, opener, id);
 
-  return getSessionById(id)!;
+  return (await getSessionById(id))!;
 }
 
 export async function handleUserMessage(
@@ -72,7 +72,7 @@ export async function handleUserMessage(
   scenario: Scenario,
   ctx: StateMachineContext
 ): Promise<void> {
-  const session = getSessionById(sessionId);
+  const session = await getSessionById(sessionId);
   if (!session) return;
 
   // Terminal states — ignore
@@ -96,13 +96,13 @@ export async function handleUserMessage(
   const { shouldReveal, piiCategories } = userMessageTriggerReveal(userText);
   if (shouldReveal) {
     // Save the user message (redacted)
-    saveUserMessage(sessionId, userText, session.state, scenario);
+    await saveUserMessage(sessionId, userText, session.state, scenario);
     await revealSession(session, scenario, ctx, piiCategories);
     return;
   }
 
   // ── Save user message with detection ─────────────────────────────────────
-  saveUserMessage(sessionId, userText, session.state, scenario);
+  await saveUserMessage(sessionId, userText, session.state, scenario);
 
   // ── Refusal / "nice catch" detection ─────────────────────────────────────
   if (detectRefusal(userText)) {
@@ -118,18 +118,26 @@ export async function handleUserMessage(
   if (!stage) return;
 
   const newState: SessionState = stageToState(stage.name);
-  updateSessionState(sessionId, newState, { currentStageIndex: nextStageIndex });
+  await updateSessionState(sessionId, newState, { currentStageIndex: nextStageIndex });
 
   // ── Generate scammer reply ────────────────────────────────────────────────
   const practiceLink = `${ctx.baseUrl}/p/${session.token}`;
-  const rawReply = await generateScammerReply({
-    scenario,
-    stage,
-    conversationHistory: session.messages,
-    practiceLink,
-  });
+  let rawReply = "";
+  let llmFailed: string | null = null;
+  try {
+    rawReply = await generateScammerReply({
+      scenario,
+      stage,
+      conversationHistory: session.messages,
+      practiceLink,
+    });
+  } catch (err) {
+    // No API key, rate limit, network: never let the practice session stall.
+    llmFailed = err instanceof Error ? (err.message.split(/\r?\n/)[0] ?? "error") : String(err);
+  }
 
-  const { ok, reason } = validateScammerReply(rawReply);
+  const validation = llmFailed ? { ok: false, reason: `LLM unavailable: ${llmFailed}` } : validateScammerReply(rawReply);
+  const { ok, reason } = validation;
   const replyText = ok ? rawReply : stage.scriptedFallback.replace("{{PRACTICE_LINK}}", practiceLink);
 
   if (!ok) {
@@ -152,7 +160,7 @@ export async function handleUserMessage(
     })),
     sentAt: now,
   };
-  saveMessage(sessionId, scammerMsg);
+  await saveMessage(sessionId, scammerMsg);
   await ctx.channel.send(session.userId, replyText, sessionId);
 }
 
@@ -161,7 +169,7 @@ export async function handleLinkClick(
   ctx: StateMachineContext
 ): Promise<{ session: Session; lesson: any } | null> {
   const { getSessionByToken } = await import("../db/repository.js");
-  const session = getSessionByToken(token);
+  const session = await getSessionByToken(token);
   if (!session) return null;
   if (["ended_caught", "ended_fell", "ended_timeout", "opted_out"].includes(session.state)) {
     return { session, lesson: session.lesson ?? null };
@@ -171,12 +179,12 @@ export async function handleLinkClick(
   const scenario = await loadScenario(session.scenarioId);
   if (!scenario) return null;
 
-  markSessionClicked(session.id);
+  await markSessionClicked(session.id);
 
   // Build lesson
-  const updatedSession = getSessionByToken(token)!;
+  const updatedSession = (await getSessionByToken(token))!;
   const lesson = await buildLesson(updatedSession, scenario);
-  updateSessionState(session.id, "ended_fell", { lesson });
+  await updateSessionState(session.id, "ended_fell", { lesson });
 
   // Send reveal in-thread
   const revealMsg = scenario.stages[scenario.stages.length - 1]?.scriptedFallback ??
@@ -184,14 +192,14 @@ export async function handleLinkClick(
   await ctx.channel.send(session.userId, revealMsg, session.id);
 
   // Update skills stats
-  updateSkillStats(session.userId, scenario, false);
+  await updateSkillStats(session.userId, scenario, false);
 
-  return { session: getSessionByToken(token)!, lesson };
+  return { session: (await getSessionByToken(token))!, lesson };
 }
 
 // ── Session timeout cleanup ───────────────────────────────────────────────────
 export async function timeoutSession(sessionId: string, scenario: Scenario, ctx: StateMachineContext): Promise<void> {
-  const session = getSessionById(sessionId);
+  const session = await getSessionById(sessionId);
   if (!session) return;
   if (["ended_caught", "ended_fell", "ended_timeout", "opted_out"].includes(session.state)) return;
   await endSession(session, scenario, "timeout", ctx);
@@ -212,12 +220,12 @@ async function revealSession(
 
   await ctx.channel.send(session.userId, revealText, session.id);
   const lesson = await buildLesson(session, scenario);
-  updateSessionState(session.id, "ended_fell", {
+  await updateSessionState(session.id, "ended_fell", {
     outcome: "fell_for_it",
     endedAt: new Date().toISOString(),
     lesson,
   });
-  updateSkillStats(session.userId, scenario, false);
+  await updateSkillStats(session.userId, scenario, false);
 }
 
 async function sendNiceCatch(
@@ -250,17 +258,17 @@ async function endSession(
   };
 
   const lesson = outcome !== "opted_out" ? await buildLesson(session, scenario) : undefined;
-  updateSessionState(session.id, stateMap[outcome], {
+  await updateSessionState(session.id, stateMap[outcome], {
     outcome,
     endedAt: new Date().toISOString(),
     lesson,
   });
   if (outcome !== "opted_out") {
-    updateSkillStats(session.userId, scenario, outcome === "caught");
+    await updateSkillStats(session.userId, scenario, outcome === "caught");
   }
 }
 
-function saveUserMessage(sessionId: string, text: string, state: string, scenario: Scenario): void {
+async function saveUserMessage(sessionId: string, text: string, state: string, scenario: Scenario): Promise<void> {
   const detection = runRules({ text });
   const msg: SessionMessage = {
     id: nanoid(),
@@ -276,7 +284,7 @@ function saveUserMessage(sessionId: string, text: string, state: string, scenari
     })),
     sentAt: new Date().toISOString(),
   };
-  saveMessage(sessionId, msg);
+  await saveMessage(sessionId, msg);
 }
 
 function stageToState(stageName: string): SessionState {
@@ -290,14 +298,14 @@ function stageToState(stageName: string): SessionState {
   return map[stageName] ?? "engaging";
 }
 
-function updateSkillStats(userId: string, scenario: Scenario, caught: boolean): void {
+async function updateSkillStats(userId: string, scenario: Scenario, caught: boolean): Promise<void> {
   const categories = new Set(
     Object.values(scenario.redFlagsByStage)
       .flat()
       .map((f) => f.category)
   );
   for (const cat of categories) {
-    upsertSkillStat(userId, cat, caught);
+    await upsertSkillStat(userId, cat, caught);
   }
 }
 

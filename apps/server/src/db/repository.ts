@@ -1,4 +1,4 @@
-import { eq, and, desc, lt } from "drizzle-orm";
+import { eq, and, desc, lt, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb } from "./client.js";
 import { users, consents, sessions, messages, skillsStats } from "./schema.js";
@@ -8,31 +8,41 @@ import type {
   Outcome, Lesson, InterestTag, ChannelType, RedFlagSpan, SkillsSummary, CategoryStats, RedFlagCategory
 } from "@safe-signal/shared";
 
+// All functions are async: the database is Postgres (TigerData in the cloud,
+// PGlite locally) and every query goes over a connection.
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 export async function upsertUser(phone: string, name?: string): Promise<User> {
-  const db = getDb();
-  const existing = db.select().from(users).where(eq(users.phone, phone)).get();
+  const db = await getDb();
+  const [existing] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
   if (existing) return rowToUser(existing);
 
   const id = nanoid();
   const now = new Date().toISOString();
-  db.insert(users).values({ id, phone, name, createdAt: now }).run();
+  await db.insert(users).values({ id, phone, name, createdAt: now });
   return { id, phone, name, createdAt: now };
 }
 
-export function getUserById(id: string): User | undefined {
-  const row = getDb().select().from(users).where(eq(users.id, id)).get();
+export async function getUserById(id: string): Promise<User | undefined> {
+  const db = await getDb();
+  const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return row ? rowToUser(row) : undefined;
+}
+
+export async function getUserByPhone(phone: string): Promise<User | undefined> {
+  const db = await getDb();
+  const [row] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
   return row ? rowToUser(row) : undefined;
 }
 
 // ── Consents ──────────────────────────────────────────────────────────────────
 export async function saveConsent(c: Omit<Consent, "id">): Promise<Consent> {
-  const db = getDb();
+  const db = await getDb();
   // Deactivate old consents for this user
-  db.update(consents).set({ active: false }).where(eq(consents.userId, c.userId)).run();
+  await db.update(consents).set({ active: false }).where(eq(consents.userId, c.userId));
 
   const id = nanoid();
-  db.insert(consents).values({
+  await db.insert(consents).values({
     id,
     userId: c.userId,
     phone: c.phone,
@@ -44,23 +54,29 @@ export async function saveConsent(c: Omit<Consent, "id">): Promise<Consent> {
     consentVersion: c.consentVersion,
     consentAt: c.consentAt,
     active: true,
-  }).run();
+  });
   return { ...c, id };
 }
 
-export function getActiveConsent(userId: string): Consent | undefined {
-  const row = getDb()
+export async function deactivateConsents(userId: string): Promise<void> {
+  const db = await getDb();
+  await db.update(consents).set({ active: false }).where(eq(consents.userId, userId));
+}
+
+export async function getActiveConsent(userId: string): Promise<Consent | undefined> {
+  const db = await getDb();
+  const [row] = await db
     .select()
     .from(consents)
     .where(and(eq(consents.userId, userId), eq(consents.active, true)))
-    .get();
+    .limit(1);
   return row ? rowToConsent(row) : undefined;
 }
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
-export function createSession(s: Omit<Session, "messages" | "lesson">): Session {
-  const db = getDb();
-  db.insert(sessions).values({
+export async function createSession(s: Omit<Session, "messages" | "lesson">): Promise<Session> {
+  const db = await getDb();
+  await db.insert(sessions).values({
     id: s.id,
     userId: s.userId,
     scenarioId: s.scenarioId,
@@ -73,39 +89,48 @@ export function createSession(s: Omit<Session, "messages" | "lesson">): Session 
     outcome: s.outcome ?? null,
     lessonJson: null,
     expiresAt: s.endedAt ?? new Date(Date.now() + sessionTimeoutMs()).toISOString(),
-  }).run();
+  });
   return { ...s, messages: [] };
 }
 
-export function getSessionById(id: string): Session | undefined {
-  const row = getDb().select().from(sessions).where(eq(sessions.id, id)).get();
+export async function getSessionById(id: string): Promise<Session | undefined> {
+  const db = await getDb();
+  const [row] = await db.select().from(sessions).where(eq(sessions.id, id)).limit(1);
   if (!row) return undefined;
   return rowToSession(row);
 }
 
-export function getSessionByToken(token: string): Session | undefined {
-  const row = getDb().select().from(sessions).where(eq(sessions.token, token)).get();
+export async function getSessionByToken(token: string): Promise<Session | undefined> {
+  const db = await getDb();
+  const [row] = await db.select().from(sessions).where(eq(sessions.token, token)).limit(1);
   if (!row) return undefined;
   return rowToSession(row);
 }
 
-export function getUserSessions(userId: string): Session[] {
-  const rows = getDb()
+export async function getUserSessions(userId: string): Promise<Session[]> {
+  const db = await getDb();
+  const rows = await db
     .select()
     .from(sessions)
     .where(eq(sessions.userId, userId))
-    .orderBy(desc(sessions.startedAt))
-    .all();
-  return rows.map(rowToSession);
+    .orderBy(desc(sessions.startedAt));
+  return Promise.all(rows.map(rowToSession));
 }
 
-export function updateSessionState(
+/** Most recent session for a user that is still in an active (non-terminal) state. */
+export async function getActiveSessionForUser(userId: string, activeStates: string[]): Promise<Session | undefined> {
+  const all = await getUserSessions(userId);
+  // getUserSessions is newest-first
+  return all.find((s) => activeStates.includes(s.state));
+}
+
+export async function updateSessionState(
   id: string,
   state: SessionState,
   opts: { currentStageIndex?: number; outcome?: Outcome; endedAt?: string; lesson?: Lesson } = {}
-): void {
-  const db = getDb();
-  db.update(sessions)
+): Promise<void> {
+  const db = await getDb();
+  await db.update(sessions)
     .set({
       state,
       ...(opts.currentStageIndex !== undefined && { currentStageIndex: opts.currentStageIndex }),
@@ -113,17 +138,17 @@ export function updateSessionState(
       ...(opts.endedAt !== undefined && { endedAt: opts.endedAt }),
       ...(opts.lesson !== undefined && { lessonJson: JSON.stringify(opts.lesson) }),
     })
-    .where(eq(sessions.id, id))
-    .run();
+    .where(eq(sessions.id, id));
 }
 
-export function markSessionClicked(id: string): void {
-  updateSessionState(id, "ended_fell", { outcome: "fell_for_it", endedAt: new Date().toISOString() });
+export async function markSessionClicked(id: string): Promise<void> {
+  await updateSessionState(id, "ended_fell", { outcome: "fell_for_it", endedAt: new Date().toISOString() });
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────────
-export function saveMessage(sessionId: string, msg: SessionMessage): void {
-  getDb().insert(messages).values({
+export async function saveMessage(sessionId: string, msg: SessionMessage): Promise<void> {
+  const db = await getDb();
+  await db.insert(messages).values({
     id: msg.id,
     sessionId,
     role: msg.role,
@@ -131,16 +156,17 @@ export function saveMessage(sessionId: string, msg: SessionMessage): void {
     stageAtSend: msg.stageAtSend,
     redFlagsJson: JSON.stringify(msg.redFlags),
     sentAt: msg.sentAt,
-  }).run();
+    ts: new Date(msg.sentAt),
+  });
 }
 
-export function getMessages(sessionId: string): SessionMessage[] {
-  const rows = getDb()
+export async function getMessages(sessionId: string): Promise<SessionMessage[]> {
+  const db = await getDb();
+  const rows = await db
     .select()
     .from(messages)
     .where(eq(messages.sessionId, sessionId))
-    .orderBy(messages.sentAt)
-    .all();
+    .orderBy(asc(messages.ts), asc(messages.sentAt));
   return rows.map((r) => ({
     id: r.id,
     role: r.role as "scammer" | "user",
@@ -153,11 +179,11 @@ export function getMessages(sessionId: string): SessionMessage[] {
 }
 
 // ── Skills stats ──────────────────────────────────────────────────────────────
-export function getSkillsSummary(userId: string): SkillsSummary {
-  const db = getDb();
-  const rows = db.select().from(skillsStats).where(eq(skillsStats.userId, userId)).all();
+export async function getSkillsSummary(userId: string): Promise<SkillsSummary> {
+  const db = await getDb();
+  const rows = await db.select().from(skillsStats).where(eq(skillsStats.userId, userId));
 
-  const userSessions = db.select().from(sessions).where(eq(sessions.userId, userId)).all();
+  const userSessions = await db.select().from(sessions).where(eq(sessions.userId, userId));
   const total = userSessions.length;
   const caught = userSessions.filter((s) => s.outcome === "caught").length;
   const fell = userSessions.filter((s) => s.outcome === "fell_for_it").length;
@@ -169,7 +195,7 @@ export function getSkillsSummary(userId: string): SkillsSummary {
     score: r.timesEncountered === 0 ? 0 : r.timesCaught / r.timesEncountered,
   }));
 
-  const weakest = categoryStats.sort((a, b) => a.score - b.score)[0]?.category;
+  const weakest = [...categoryStats].sort((a, b) => a.score - b.score)[0]?.category;
 
   return {
     userId,
@@ -182,53 +208,51 @@ export function getSkillsSummary(userId: string): SkillsSummary {
   };
 }
 
-export function upsertSkillStat(
+export async function upsertSkillStat(
   userId: string,
   category: RedFlagCategory,
   caught: boolean
-): void {
-  const db = getDb();
-  const existing = db
+): Promise<void> {
+  const db = await getDb();
+  const [existing] = await db
     .select()
     .from(skillsStats)
     .where(and(eq(skillsStats.userId, userId), eq(skillsStats.category, category)))
-    .get();
+    .limit(1);
 
   const now = new Date().toISOString();
   if (existing) {
-    db.update(skillsStats)
+    await db.update(skillsStats)
       .set({
         timesEncountered: existing.timesEncountered + 1,
         timesCaught: existing.timesCaught + (caught ? 1 : 0),
         updatedAt: now,
       })
-      .where(eq(skillsStats.id, existing.id))
-      .run();
+      .where(eq(skillsStats.id, existing.id));
   } else {
-    db.insert(skillsStats).values({
+    await db.insert(skillsStats).values({
       id: nanoid(),
       userId,
       category,
       timesEncountered: 1,
       timesCaught: caught ? 1 : 0,
       updatedAt: now,
-    }).run();
+    });
   }
 }
 
 // ── TTL cleanup ───────────────────────────────────────────────────────────────
-export function purgeExpiredSessions(): number {
-  const db = getDb();
+export async function purgeExpiredSessions(): Promise<number> {
+  const db = await getDb();
   const now = new Date().toISOString();
-  const expired = db
+  const expired = await db
     .select({ id: sessions.id })
     .from(sessions)
-    .where(lt(sessions.expiresAt, now))
-    .all();
+    .where(lt(sessions.expiresAt, now));
 
   for (const s of expired) {
-    db.delete(messages).where(eq(messages.sessionId, s.id)).run();
-    db.delete(sessions).where(eq(sessions.id, s.id)).run();
+    await db.delete(messages).where(eq(messages.sessionId, s.id));
+    await db.delete(sessions).where(eq(sessions.id, s.id));
   }
   return expired.length;
 }
@@ -256,8 +280,8 @@ function rowToConsent(r: typeof consents.$inferSelect): Consent {
   };
 }
 
-function rowToSession(r: typeof sessions.$inferSelect): Session {
-  const msgs = getMessages(r.id);
+async function rowToSession(r: typeof sessions.$inferSelect): Promise<Session> {
+  const msgs = await getMessages(r.id);
   return {
     id: r.id,
     userId: r.userId,

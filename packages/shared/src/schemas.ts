@@ -54,7 +54,7 @@ export const OptInRequestSchema = z.object({
 });
 
 export const TriggerPracticeRequestSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.string().min(1),
   scenarioId: z.string().optional(),
 });
 
@@ -65,7 +65,7 @@ export const DetectRequestSchema = z.object({
 });
 
 export const SimulatorSendSchema = z.object({
-  sessionId: z.string().uuid(),
+  sessionId: z.string().min(1),
   text: z.string().min(1).max(2000),
 });
 

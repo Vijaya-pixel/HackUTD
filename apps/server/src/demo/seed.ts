@@ -15,6 +15,18 @@ const DEMO_USER_PHONE = "+15550010001";
 const DEMO_USER_NAME = "Demo User";
 
 async function seed() {
+  // PGlite allows a single process per data directory. Refuse to run while the
+  // dev server holds it open (TigerData/Postgres has no such limit).
+  if (!process.env["DATABASE_URL"]) {
+    const port = process.env["PORT"] ?? "3000";
+    const running = await fetch(`http://localhost:${port}/health`).then((r) => r.ok).catch(() => false);
+    if (running) {
+      console.error(`✗ Dev server is running on :${port}. Stop it before seeding the local PGlite database,`);
+      console.error("  or set DATABASE_URL (TigerData) where concurrent connections are fine.");
+      process.exit(1);
+    }
+  }
+
   console.log("🌱 Seeding demo data…");
 
   const user = await upsertUser(DEMO_USER_PHONE, DEMO_USER_NAME);
@@ -32,14 +44,15 @@ async function seed() {
   });
   console.log("✅ Consent saved");
 
-  const db = getDb();
+  const db = await getDb();
 
   // Clear existing demo sessions
-  const existing = db.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, user.id)).all();
+  const existing = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, user.id));
   for (const s of existing) {
-    db.delete(messages).where(eq(messages.sessionId, s.id)).run();
-    db.delete(sessions).where(eq(sessions.id, s.id)).run();
+    await db.delete(messages).where(eq(messages.sessionId, s.id));
+    await db.delete(sessions).where(eq(sessions.id, s.id));
   }
+  await db.delete(skillsStats).where(eq(skillsStats.userId, user.id));
 
   // ── Session 1: Fell for it (delivery scam) ────────────────────────────────
   const s1Id = nanoid();
@@ -88,7 +101,7 @@ async function seed() {
     generatedAt: new Date().toISOString(),
   };
 
-  db.insert(sessions).values({
+  await db.insert(sessions).values({
     id: s1Id,
     userId: user.id,
     scenarioId: "parcelgo-delivery-1",
@@ -101,7 +114,7 @@ async function seed() {
     outcome: "fell_for_it",
     lessonJson: JSON.stringify(s1Lesson),
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  }).run();
+  });
   console.log(`✅ Session 1 (fell_for_it): ${s1Id}`);
 
   // ── Session 2: Caught it (bank scam) ──────────────────────────────────────
@@ -137,7 +150,7 @@ async function seed() {
     generatedAt: new Date().toISOString(),
   };
 
-  db.insert(sessions).values({
+  await db.insert(sessions).values({
     id: s2Id,
     userId: user.id,
     scenarioId: "northline-bank-1",
@@ -150,14 +163,14 @@ async function seed() {
     outcome: "caught",
     lessonJson: JSON.stringify(s2Lesson),
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  }).run();
+  });
   console.log(`✅ Session 2 (caught): ${s2Id}`);
 
   // ── Skills stats ──────────────────────────────────────────────────────────
-  upsertSkillStat(user.id, "urgency", false);
-  upsertSkillStat(user.id, "suspicious_link_or_sender", false);
-  upsertSkillStat(user.id, "suspicious_link_or_sender", true);
-  upsertSkillStat(user.id, "impersonation", true);
+  await upsertSkillStat(user.id, "urgency", false);
+  await upsertSkillStat(user.id, "suspicious_link_or_sender", false);
+  await upsertSkillStat(user.id, "suspicious_link_or_sender", true);
+  await upsertSkillStat(user.id, "impersonation", true);
   console.log("✅ Skills stats seeded");
 
   console.log(`\n🎬 Demo user ready!`);
@@ -167,4 +180,6 @@ async function seed() {
   console.log(`   session 2 (caught): ${s2Id}`);
 }
 
-seed().catch((e) => { console.error(e); process.exit(1); });
+seed()
+  .then(() => process.exit(0))
+  .catch((e) => { console.error(e); process.exit(1); });

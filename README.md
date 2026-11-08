@@ -14,7 +14,7 @@ pnpm install
 cp .env.example .env
 # Fill in: ANTHROPIC_API_KEY (or OPENAI_API_KEY), BASE_URL, PHOTON_* keys
 
-# Seed demo data
+# Seed demo data (stop the dev server first when using local PGlite)
 pnpm seed
 
 # Start server (port 3000)
@@ -58,6 +58,23 @@ packages/
 | POST | `/webhooks/photon` | Photon inbound webhook (Standard Webhooks) |
 | GET | `/health` | Health check |
 
+## Database
+
+Postgres everywhere, via Drizzle ORM:
+
+| Mode | When | Notes |
+|------|------|-------|
+| **TigerData** (Timescale Cloud) | `DATABASE_URL` is set | Production/demo DB. `messages` is created as a **hypertable** partitioned on `ts`, so time-bucketed analytics (`time_bucket`, continuous aggregates) work out of the box. |
+| **PGlite** (embedded Postgres) | `DATABASE_URL` is empty | Zero-setup local fallback, persisted under `DATABASE_PATH` (default `./data/pglite`). Same SQL, same code path. Single process only: stop the dev server before running `pnpm seed`. |
+
+Set up TigerData:
+
+1. Create a free service at https://console.cloud.timescale.com (Tiger Cloud).
+2. Copy the connection string and put it in `apps/server/.env` as `DATABASE_URL=postgres://tsdbadmin:...@...tsdb.cloud.timescale.com:.../tsdb?sslmode=require`.
+3. `pnpm seed` then `pnpm dev:server`. The startup log prints `DB: tigerdata (...)  |  hypertable: yes`, and `GET /health` reports the same under `db`.
+
+Tables are created on startup (`apps/server/src/db/client.ts`); schema lives in `apps/server/src/db/schema.ts`.
+
 ## Environment variables
 
 See `.env.example` for the full list. Key variables:
@@ -65,6 +82,7 @@ See `.env.example` for the full list. Key variables:
 - `LLM_PROVIDER` — `anthropic` (default) or `openai`
 - `DEMO_MODE=true` — short timeouts, no Photon required
 - `PHOTON_PROJECT_ID/SECRET/WEBHOOK_SECRET` — Spectrum credentials
+- `DATABASE_URL` — TigerData / Postgres connection string (empty = embedded PGlite)
 - `SESSION_TTL_DAYS` — auto-delete sessions after N days (default 30)
 
 ## Demo

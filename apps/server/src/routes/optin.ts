@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { nanoid } from "nanoid";
 import { OptInRequestSchema } from "@safe-signal/shared";
-import { upsertUser, saveConsent, getActiveConsent } from "../db/repository.js";
+import { upsertUser, saveConsent, getActiveConsent, deactivateConsents } from "../db/repository.js";
 
 const app = new Hono();
 
@@ -28,16 +28,13 @@ app.post("/optin", zValidator("json", OptInRequestSchema), async (c) => {
 
 app.delete("/optin/:userId", async (c) => {
   const userId = c.req.param("userId");
-  const { getDb } = await import("../db/client.js");
-  const { consents } = await import("../db/schema.js");
-  const { eq } = await import("drizzle-orm");
-  getDb().update(consents).set({ active: false }).where(eq(consents.userId, userId)).run();
+  await deactivateConsents(userId);
   return c.json({ ok: true });
 });
 
 app.get("/optin/:userId", async (c) => {
   const userId = c.req.param("userId");
-  const consent = getActiveConsent(userId);
+  const consent = await getActiveConsent(userId);
   if (!consent) return c.json({ active: false });
   return c.json({ active: true, consent });
 });

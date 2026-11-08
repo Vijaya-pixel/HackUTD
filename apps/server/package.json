@@ -11,23 +11,24 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.26.0",
+    "@electric-sql/pglite": "^0.5.15",
+    "@hono/node-server": "^1.12.0",
+    "@hono/zod-validator": "^0.4.1",
     "@safe-signal/shared": "workspace:*",
-    "@standard-webhooks/node": "^1.1.0",
-    "better-sqlite3": "^11.1.2",
+    "dotenv": "^16.4.5",
     "drizzle-orm": "^0.33.0",
     "hono": "^4.5.3",
     "nanoid": "^5.0.7",
-    "spectrum-ts": "^0.0.1",
-    "zod": "^3.23.8",
-    "@anthropic-ai/sdk": "^0.26.0",
     "openai": "^4.56.0",
-    "dotenv": "^16.4.5",
-    "@hono/node-server": "^1.12.0",
-    "@hono/zod-validator": "^0.4.1"
+    "pg": "^8.23.1",
+    "spectrum-ts": "^12.15.0",
+    "standardwebhooks": "^1.1.1",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.5.0",
+    "@types/pg": "^8",
     "drizzle-kit": "^0.24.0",
     "tsx": "^4.17.0",
     "typescript": "^5.5.0",

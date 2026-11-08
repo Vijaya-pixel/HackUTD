@@ -1,9 +1,7 @@
 import { Hono } from "hono";
-import { Webhook } from "@standard-webhooks/node";
-import { eq, and, inArray } from "drizzle-orm";
+import { Webhook } from "standardwebhooks";
 import { handleUserMessage, loadScenario } from "../engine/stateMachine.js";
-import { getDb } from "../db/client.js";
-import { users, sessions } from "../db/schema.js";
+import { getUserByPhone, getActiveSessionForUser } from "../db/repository.js";
 import type { MessagingChannel } from "../channels/MessagingChannel.js";
 
 export function createPhotonWebhookRouter(channel: MessagingChannel) {
@@ -40,7 +38,7 @@ export function createPhotonWebhookRouter(channel: MessagingChannel) {
     const text: string = payload.data?.content?.text ?? payload.data?.text ?? "";
     if (!from || !text) return c.json({ ok: true });
 
-    const session = findActiveSessionForPhone(from);
+    const session = await findActiveSessionForPhone(from);
     if (!session) return c.json({ ok: true });
 
     const scenario = await loadScenario(session.scenarioId);
@@ -55,16 +53,8 @@ export function createPhotonWebhookRouter(channel: MessagingChannel) {
 
 const ACTIVE_STATES = ["hook_sent", "engaging", "escalating", "link_sent"];
 
-function findActiveSessionForPhone(phone: string) {
-  const db = getDb();
-  const user = db.select().from(users).where(eq(users.phone, phone)).get();
+async function findActiveSessionForPhone(phone: string) {
+  const user = await getUserByPhone(phone);
   if (!user) return null;
-
-  return db
-    .select()
-    .from(sessions)
-    .where(and(eq(sessions.userId, user.id), inArray(sessions.state, ACTIVE_STATES)))
-    .orderBy(sessions.startedAt)
-    .all()
-    .at(-1) ?? null;
+  return (await getActiveSessionForUser(user.id, ACTIVE_STATES)) ?? null;
 }
