@@ -1,0 +1,25 @@
+{
+  "name": "scamshield-server",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "migrate": "node src/migrate.js",
+    "seed": "node src/seed.js",
+    "check-llm": "node src/check-llm.js",
+    "tunnel-setup": "node scripts/tunnel-setup.mjs",
+    "fake-media": "node scripts/fake-media.mjs"
+  },
+  "dependencies": {
+    "@google/genai": "^3.0.0",
+    "@hono/node-server": "^2.1.6",
+    "dotenv": "^18.0.9",
+    "hono": "^4.13.17",
+    "pg": "^8.23.1",
+    "spectrum-ts": "^12.15.0",
+    "twilio": "^6.3.0",
+    "ws": "^8.22.1"
+  }
+}
