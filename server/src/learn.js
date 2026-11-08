@@ -8,6 +8,7 @@ import { randomUUID, randomBytes } from 'node:crypto';
 import { q, one, tx } from './db.js';
 import { generateText, generateJson, SchemaType, llmEnabled } from './llm.js';
 import { publish } from './sse.js';
+import { petEvent } from './pet.js';
 
 const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scenarios');
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost:8787').replace(/\/$/, '');
@@ -199,6 +200,13 @@ async function endSession(s, sc, outcome) {
   const lesson = outcome === 'opted_out' ? null : await buildLesson(full, sc, outcome);
   await setState(s.id, stateMap[outcome], { outcome, endedAt: new Date().toISOString(), lesson });
   if (outcome !== 'opted_out') await bumpSkills(s.lineId, sc, outcome === 'caught');
+  // Buddy's health follows practice outcomes: tapping the link is the trap and hurts most.
+  if (outcome === 'caught' || outcome === 'fell_for_it') {
+    const tapped = full.messages.some(m => m.role === 'user' && m.text === 'Tapped the link');
+    const kind = outcome === 'caught' ? 'caught' : tapped ? 'trap' : 'fell';
+    const note = kind === 'caught' ? `Caught the ${sc.brand} practice scam` : kind === 'trap' ? `Tapped the link in the ${sc.brand} practice scam` : `Fell for the ${sc.brand} practice scam`;
+    petEvent(s.lineId, kind, note, { sessionId: s.id, brand: sc.brand, category: sc.category }).catch(err => console.warn('[pet]', err.message));
+  }
 }
 
 const MISTAKES = [
@@ -278,12 +286,12 @@ export function registerLearn(app) {
   app.post('/api/learn/session/:id/click', async c => { const s = await getSession(c.req.param('id')); if (!s) return c.json({ error: 'not found' }, 404); return c.json(await handleLinkClick(s.token)); });
   app.post('/api/learn/detect', async c => { const { text, senderKnown } = await c.req.json(); if (!text) return c.json({ error: 'text required' }, 400); return c.json(await detect(String(text), senderKnown)); });
 
-  // Practice link: records the tap, reveals in-thread, and sends the phone to the lesson in the T-Life UI.
+  // Practice link: records the tap (the trap), then lands the phone on Buddy's page in the T-Life UI, where the
+  // pet loses health and explains the red flags and where the person should have stopped.
   app.get('/p/:token', async c => {
     const s = await handleLinkClick(c.req.param('token'));
     if (!s) return c.html(page('Link not found', '<p>This practice link has already been used or has expired.</p>'), 404);
-    const rule = s.lesson?.ruleToRemember ? `<div class="rule"><h3>Rule to remember</h3><p>${esc(s.lesson.ruleToRemember)}</p></div>` : '';
-    return c.html(page('Practice complete', `<div class="big">🛑</div><h1>This was a practice scam</h1><p>Safe Signal, part of ScamShield in T-Life, sent this text so you could practice safely. Nothing was shared with anyone.</p>${rule}<a class="btn" href="/?lesson=${s.id}#learn">See your lesson in T-Life</a>`));
+    return c.redirect(`/?trap=${encodeURIComponent(s.id)}`, 302);
   });
   app.get('/learn/:id', async c => { const s = await getSession(c.req.param('id')); if (!s?.lesson) return c.html(page('Not found', '<p>No lesson yet.</p>'), 404); const L = s.lesson;
     return c.html(page('Your lesson', `<h1>${L.outcome === 'caught' ? '🎉 You caught it' : '🛑 You fell for this one'}</h1><h2>Key mistakes</h2><ul>${L.mistakes.map(m => `<li>${esc(m)}</li>`).join('') || '<li>No major mistakes</li>'}</ul><h2>What you did well</h2><ul>${L.strengths.map(m => `<li>${esc(m)}</li>`).join('')}</ul><div class="rule"><h3>Rule to remember</h3><p>${esc(L.ruleToRemember)}</p></div><a class="btn" href="/?lesson=${s.id}#learn">Open in T-Life</a>`)); });

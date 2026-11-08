@@ -3,7 +3,7 @@ const KEY = 'tlife-scamshield-ui-v3';
 const ACCOUNT = 'acct_anne';
 
 /* ---------- state ---------- */
-let S = Object.assign({ tab: 'home', stack: [], line: 0, filter: 'all' }, loadPrefs(), {
+let S = Object.assign({ tab: 'home', stack: [], line: 0, filter: 'all', quizOn: true },loadPrefs(), {
   ready: false, error: null, premium: false, toggles: {}, categories: {}, blocked: [], allowed: [], lookups: [],
   stats: { blocked: 0, flagged: 0, identified: 0 }, allStats: {}, activity: [],
   sheet: null, toast: null, call: null, lookupQ: '', lookupRes: null, reason: null, addNum: '', reportText: '',
@@ -584,8 +584,8 @@ function detectSheet() {
 }
 
 /* ---------- render ---------- */
-const TABS = [['home', 'Home', 'home'], ['learn', 'Learn', 'book'], ['benefits', 'Benefits', 'gift'], ['services', 'Services', 'grid'], ['account', 'Account', 'user']];
-const SCREENS = { home: homeScreen, shop: shopScreen, learn: learnScreen, 'learn-chat': learnChatScreen, lesson: lessonScreen, benefits: benefitsScreen, services: servicesScreen, account: accountScreen, scamshield: scamshieldScreen, activity: activityScreen, lookup: lookupScreen, blocklist: () => listScreen('blocklist'), allowlist: () => listScreen('allowlist'), categories: categoriesScreen, 'ss-settings': settingsScreen, family: familyScreen };
+const TABS = [['home', 'Home', 'home'], ['learn', 'Learn', 'book'], ['benefits', 'Benefits', 'gift'], ['services', 'Services', 'grid'], ['pet', 'Buddy', 'paw'], ['account', 'Account', 'user']];
+const SCREENS = { home: homeScreen, pet: petScreen, shop: shopScreen, learn: learnScreen, 'learn-chat': learnChatScreen, lesson: lessonScreen, benefits: benefitsScreen, services: servicesScreen, account: accountScreen, scamshield: scamshieldScreen, activity: activityScreen, lookup: lookupScreen, blocklist: () => listScreen('blocklist'), allowlist: () => listScreen('allowlist'), categories: categoriesScreen, 'ss-settings': settingsScreen, family: familyScreen };
 function render(resetScroll) {
   const content = document.getElementById('content'), tabbar = document.getElementById('tabbar');
   if (!S.ready) {
@@ -604,7 +604,7 @@ function render(resetScroll) {
   if (bind) { const el = content.querySelector(`[data-bind="${bind}"]`); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) {} } }
   renderOverlay();
 }
-const last = { sheet: '', call: null, toast: '' };
+const last = { sheet: '', call: null, toast: '', quiz: '' };
 function callKey() { const c = S.call; return [c.scn, c.phase, c.endedBy, c.callerId, c.label, c.remote, !!c.summary].join('|') + '#' + [c.dismissed, c.transcript.length, c.alerts.length, S.premium].join('|'); }
 function updateCall(callEl, k) {
   const html = callHtml();
@@ -615,8 +615,10 @@ function updateCall(callEl, k) {
 }
 function renderOverlay() {
   const ov = document.getElementById('overlay');
-  if (!ov.querySelector('#sheetov')) ov.innerHTML = '<div id="sheetov"></div><div id="callov"></div><div id="toastov"></div>';
-  const [sheetEl, callEl, toastEl] = ['#sheetov', '#callov', '#toastov'].map(s => ov.querySelector(s));
+  if (!ov.querySelector('#sheetov')) ov.innerHTML = '<div id="sheetov"></div><div id="callov"></div><div id="quizov"></div><div id="toastov"></div>';
+  const [sheetEl, callEl, toastEl, quizEl] = ['#sheetov', '#callov', '#toastov', '#quizov'].map(s => ov.querySelector(s));
+  const qh = S.call ? '' : quizHtml();
+  if (qh !== last.quiz) { quizEl.innerHTML = qh; last.quiz = qh; }
   let sh = '';
   if (S.sheet) {
     const { name, data } = S.sheet; let inner = '';
@@ -694,13 +696,14 @@ document.addEventListener('click', e => {
     lessonGo: () => { S.stack = []; S.tab = 'home'; go(v); },
     quick: () => { S.learnInput = v; document.querySelector('[data-act="sendReply"]')?.click(); },
     sendReply: () => { const t = (S.learnInput || '').trim(); if (!t || !S.session) return; S.learnInput = ''; S.session.messages.push({ id: 'tmp', role: 'user', text: t, redFlags: [] }); render(); api.post(`/learn/session/${S.session.id}/reply`, { text: t }).then(s => { S.session = s; render(); if (isOver(s)) loadLearn().catch(() => {}); }).catch(fail); },
-    tapLink: () => api.post(`/learn/session/${v}/click`).then(s => { S.session = s; render(); loadLearn().catch(() => {}); toast('That link was the trap. Opening your lesson…'); setTimeout(() => openLesson(s.id).catch(fail), 900); }).catch(fail),
+    tapLink: () => api.post(`/learn/session/${v}/click`).then(s => { S.session = s; loadLearn().catch(() => {}); startTrap(s.id); }).catch(fail),
     optChannel: () => { S.optin.channel = v; renderOverlay(); },
     optInterest: () => { const i = S.optin.interests; S.optin.interests = i.includes(v) ? i.filter(x => x !== v) : [...i, v]; renderOverlay(); },
     optinSave: () => api.post(`/learn/${L.lineId}/optin`, { channel: S.optin.channel, interests: S.optin.interests, maxPerDay: 5 }).then(o => { S.learn = o; closeSheet(); toast(S.optin.channel === 'imessage' ? 'Practice on. Text the ScamShield number once if you have not yet.' : 'Scam practice is on'); render(); }).catch(fail),
     optout: () => api.del(`/learn/${L.lineId}/optin`).then(() => { closeSheet(); toast('Practice turned off'); return loadLearn(); }).catch(fail),
     detect: () => { const t = (S.detectText || '').trim(); if (!t) return toast('Paste a message first'); api.post('/learn/detect', { text: t, senderKnown: false }).then(r => { S.detectRes = r; renderOverlay(); }).catch(fail); },
     reset: () => { localStorage.removeItem(KEY); location.reload(); },
+    ...BUDDY_ACTIONS(v, el),
   };
   (A[act] || (() => {}))();
 });
@@ -716,6 +719,7 @@ async function boot() {
   if (!es) es = api.events({
     open: syncCall,
     call: onCallEvent,
+    pet: onPetEvent,
     activity: a => { if (a.line !== curLine().lineId) return; S.activity = [a, ...S.activity.filter(x => x.id !== a.id && !(x.e164 === a.e164 && x.type === a.type))]; refreshStats().catch(() => render()); },
     line: l => { const L = LINES.find(x => x.lineId === l.id); if (L) { L.toggles = l.toggles; if (L === curLine()) { S.toggles = l.toggles; render(); } } },
     lists: () => refreshLists().catch(() => {}),
@@ -734,6 +738,9 @@ async function boot() {
   window.addEventListener('pageshow', () => syncCall());
   setInterval(() => { if (document.visibilityState === 'visible') syncCall(); }, 3000);
   // Deep link from a practice text: /?lesson=<sessionId>
+  // Trap link from a practice text (/p/:token redirects here): land on Buddy taking the hit.
+  const trapId = new URLSearchParams(location.search).get('trap');
+  if (trapId) { history.replaceState(null, '', location.pathname); startTrap(trapId); return; }
   const want = new URLSearchParams(location.search).get('lesson');
   if (want) { history.replaceState(null, '', location.pathname); S.tab = 'learn'; S.stack = []; render(true); openLesson(want).catch(fail); }
 }

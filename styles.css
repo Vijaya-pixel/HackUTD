@@ -375,3 +375,72 @@ textarea.area{width:100%;border:1px solid var(--line);border-radius:12px;padding
 .card.feature{border-color:transparent;box-shadow:0 4px 20px rgba(0,0,0,.08);padding:18px 16px 16px}
 .card.feature .big{font-size:20px}
 .row .s.wrap{white-space:normal;line-height:1.4}
+
+/* ---------- ScamShield Buddy ---------- */
+.tabbar .tab{font-size:10.5px}
+.stage{overflow:hidden;position:relative;border-color:transparent;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+.petwrap{position:relative;height:186px;display:flex;align-items:center;justify-content:center;margin:4px 0 0}
+.pet{width:168px;height:168px;animation:bob 3s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.stage.mood-tired .pet{animation-duration:4.5s}
+.stage.mood-sick .pet .body{filter:saturate(.3) brightness(.97)}
+.stage.mood-critical .pet .body{filter:grayscale(.85)}
+.stage.mood-critical .pet{animation:none}
+.stage.anim-hurt .pet,.stage.anim-trap .pet{animation:shake .5s ease-in-out 0s 3}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-12px) rotate(-5deg)}40%{transform:translateX(12px) rotate(5deg)}60%{transform:translateX(-8px) rotate(-3deg)}80%{transform:translateX(8px) rotate(3deg)}}
+.stage.anim-heal .pet{animation:bounce .6s ease-out 0s 2}
+@keyframes bounce{0%,100%{transform:scale(1)}40%{transform:scale(1.12) translateY(-10px)}}
+.petwrap .flash{position:absolute;inset:-30px;pointer-events:none;opacity:0;border-radius:30px}
+.stage.anim-hurt .flash,.stage.anim-trap .flash{background:rgba(215,38,61,.35);animation:flash .5s ease-out 0s 3}
+.stage.anim-heal .flash{background:rgba(30,158,90,.22);animation:flash .6s ease-out 0s 2}
+@keyframes flash{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+.stage.anim-trap{animation:shakecard .45s ease-in-out 0s 4}
+@keyframes shakecard{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.petwrap .float{position:absolute;top:16px;right:22px;font-size:36px;font-weight:800;letter-spacing:-1px;animation:rise 2.6s ease-out forwards}
+.float.neg,.neg{color:var(--red)}.float.pos,.pos{color:var(--green)}
+@keyframes rise{0%{transform:translateY(24px) scale(.8);opacity:0}15%{opacity:1;transform:translateY(0) scale(1.1)}100%{transform:translateY(-56px);opacity:0}}
+.stage .bubble{position:relative;background:#F2F2F2;border-radius:16px;padding:12px 14px;font-size:16px;font-weight:500;margin:6px 0 14px;max-width:none;animation:none}
+.stage .bubble::before{content:"";position:absolute;top:-8px;left:50%;margin-left:-8px;border:8px solid transparent;border-top:0;border-bottom-color:#F2F2F2}
+.hbar,.xbar{margin-top:10px}
+.hbar .lbl,.xbar .lbl,.meter .lbl{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;color:var(--text)}
+.hbar .lbl b,.meter .lbl b{font-weight:600}
+.hbar .bar{height:14px;border-radius:999px;background:#EEE;overflow:hidden}
+.hbar .fill{height:100%;border-radius:999px;transition:width 1.8s cubic-bezier(.2,.8,.2,1)}
+.hbar .fill.good{background:var(--green)}.hbar .fill.mid{background:var(--amber)}.hbar .fill.low{background:var(--red)}
+.xbar .bar{height:8px;border-radius:999px;background:#EEE;overflow:hidden}
+.xbar .fill{height:100%;border-radius:999px;background:var(--magenta);transition:width 1s}
+.meter{padding:12px 0;border-top:1px solid var(--line)}
+.meter:first-child{border-top:0;padding-top:0}
+.meter .bar{height:8px;border-radius:999px;background:#EEE;overflow:hidden}
+.meter .fill{height:100%;border-radius:999px;background:var(--magenta)}
+.meter .hint{font-size:13px;color:var(--muted);margin-top:6px}
+.card.trap{border:2px solid var(--red);animation:up .4s ease-out}
+.card.trap .eyebrow{color:var(--red)}
+.stopat{background:var(--red-tint);border-radius:12px;padding:12px 14px;margin:12px 0}
+.stopat .lbl{font-size:13px;font-weight:600;color:var(--red);margin-bottom:4px}
+.stopat .q{font-size:15px;line-height:1.45;font-style:italic;color:var(--ink)}
+.stopat .hint{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.4}
+.flaglist .feat,.mistakes .feat{align-items:flex-start;font-size:15px}
+.flaglist .badge{flex:none;margin-top:2px}
+.mistakes{margin-top:6px;padding-top:6px;border-top:1px solid var(--line)}
+.mistakes .feat svg{color:var(--red)}
+.rule{display:flex;gap:8px;align-items:flex-start;background:#F2F2F2;border-radius:12px;padding:12px 14px;font-weight:600;font-size:15px;margin-top:10px;line-height:1.4}
+.rule svg{width:20px;height:20px;color:var(--magenta);flex:none;margin-top:1px}
+/* pop quiz */
+.quizpop{position:absolute;left:12px;right:12px;bottom:98px;z-index:25;background:#fff;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.22);padding:14px;animation:up .3s ease-out;border:2px solid transparent}
+.quizpop .qh{display:flex;gap:10px;align-items:flex-start}
+.quizpop .mini{width:44px;height:44px;flex:none}
+.quizpop .mini .pet{width:44px;height:44px;animation:none}
+.quizpop .qt{flex:1;min-width:0}
+.quizpop .eyebrow{font-size:12px;font-weight:600;color:var(--magenta);margin-bottom:2px}
+.quizpop .q{font-size:15px;line-height:1.4;font-weight:500;color:var(--ink)}
+.quizpop .icon-btn{width:32px;height:32px;margin:-6px -6px 0 0;flex:none}
+.quizpop .icon-btn svg{width:18px;height:18px}
+.quizpop .qo{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.quizpop .qo .chip{font-size:14px;padding:8px 14px;white-space:normal;text-align:left}
+.quizpop .qo .chip:disabled{opacity:.5}
+.quizpop .qr{margin-top:10px;font-size:14px}
+.quizpop .qr b{font-weight:600}
+.quizpop .qr p{color:var(--muted);margin-top:4px;line-height:1.4}
+.quizpop.right{border-color:var(--green)}
+.quizpop.wrong{border-color:var(--red)}

@@ -14,6 +14,7 @@ import { llmEnabled } from './llm.js';
 import { registerTwilio, attachMediaServer, hangupTwilio, sayAndHangup, forwardTarget, twilioEnabled } from './twilio.js';
 import { QUESTIONS, CONNECTING, REFUSED, NOT_AVAILABLE, summarizeScreening, hardFraud } from './screener.js';
 import { registerLearn, setPhotonSender } from './learn.js';
+import { registerPet, petEvent } from './pet.js';
 
 const app = new Hono();
 app.use('/api/*', cors());
@@ -137,6 +138,7 @@ app.post('/api/reports', async c => {
              risk = CASE WHEN $4 THEN GREATEST(0, numbers.risk - 15) ELSE LEAST(100, numbers.risk + 5) END, updated_at = now()`,
     [n, wronglyFlagged ? 10 : 60, wronglyFlagged ? 'No reports' : 'Scam Likely', wronglyFlagged]);
   publish('report', r.rows[0]);
+  if (lineId) petEvent(lineId, 'report', `Reported ${pretty(n)} as ${reason}`, { num: n }).catch(err => console.warn('[pet]', err.message));
   return c.json(r.rows[0]);
 });
 app.post('/api/accounts/:id/premium', async c => {
@@ -383,6 +385,7 @@ startPhoton();
 
 /* ---------- Learn tab (Safe Signal practice) ---------- */
 registerLearn(app);
+registerPet(app);
 setPhotonSender(sendToLine);
 
 /* ---------- Twilio (real calls) ---------- */
