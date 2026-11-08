@@ -14,6 +14,8 @@ const DEMO_LINE = process.env.DEMO_LINE_ID || 'line_0';
 let app = null, im = null, textFn = null, status = { state: 'off', detail: 'PHOTON_PROJECT_ID / PHOTON_PROJECT_SECRET not set' };
 const outbox = []; // last 50 outbound messages with delivery result (GET /api/photon/outbox)
 const seen = new Set();
+import os from 'node:os';
+const INSTANCE = `${os.hostname()}:${process.pid}`;
 
 export const photonEnabled = () => !!app;
 export const photonStatus = () => ({ ...status, projectId: PROJECT_ID ? PROJECT_ID.slice(0, 8) + '…' : null, demoPhone: DEMO_PHONE ? pretty(DEMO_PHONE) : null, outbox: outbox.length });
@@ -77,6 +79,12 @@ export async function sendToLine(lineId, text, meta = {}) {
 export async function handleInbound(space, message) {
   if (!message || message.content?.type !== 'text') return;
   if (seen.has(message.id)) return; seen.add(message.id);
+  // Claim the message in the shared database: if a teammate's server (same Photon project, same TigerData)
+  // got here first, stay silent so the phone never sees two replies.
+  try {
+    const claim = await q('INSERT INTO photon_inbound (id, handled_by) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING RETURNING id', [message.id, INSTANCE]);
+    if (!claim.rowCount) { console.log('[photon] inbound', message.id, 'already handled by another server; skipping'); return { handled: 'elsewhere' }; }
+  } catch (e) { console.warn('[photon] claim failed (replying anyway):', e.message); }
   const text = message.content.text || '';
   const fromHandle = message.sender?.id || '';
   const line = await lineForHandle(fromHandle);
