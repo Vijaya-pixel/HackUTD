@@ -5,16 +5,11 @@
 
 /* ---------- the map ---------- */
 const QUEST = [
-  { id: 'texttrap', title: 'Text Trap', kind: 'sorter', icon: 'message', x: 50, y: 93, color: '#E20074', blurb: 'Texts fly in. Call each one Legit or Scam before the timer runs out.', teaches: 'Delivery, toll and account texts' },
-  { id: 'linklens', title: 'Link Lens', kind: 'links', icon: 'globe', x: 18, y: 84, color: '#7A3BFF', blurb: 'Three links, one is real. Read what comes right before the first slash.', teaches: 'Look-alike domains' },
-  { id: 'hangup', title: 'Hang Up', kind: 'call', icon: 'phoneOff', x: 80, y: 76, color: '#D7263D', blurb: 'A caller talks. Hit Hang up the moment you hear the red flag, before they ask for anything.', teaches: 'Phone scams and pressure' },
-  { id: 'situations', title: 'Situation Room', kind: 'pick', icon: 'clipboard', x: 28, y: 67, color: '#2B6BE4', blurb: 'Seven everyday moments. Pick the move that keeps you safe.', teaches: 'QR codes, pop-ups, deposits, donations' },
-  { id: 'codekeeper', title: 'Code Keeper', kind: 'chat', icon: 'lock', x: 74, y: 58, color: '#1E9E5A', blurb: 'Your "bank" is texting. Pick the reply that keeps your code yours.', teaches: 'One-time codes and PINs' },
-  { id: 'jobhunt', title: 'Dream Job', kind: 'chat', icon: 'star', x: 22, y: 49, color: '#0FA3B1', blurb: 'A recruiter texts the perfect offer. See how far you get without paying to work.', teaches: 'Fake checks and advance fees' },
-  { id: 'familysos', title: 'Family SOS', kind: 'chat', icon: 'users', x: 78, y: 40, color: '#E09A00', blurb: 'An emergency text from "family". Choose what to do, step by step.', teaches: 'Family emergency scams' },
-  { id: 'deepfake', title: 'Voice Clone', kind: 'call', calls: 'clone', icon: 'mic', x: 26, y: 31, color: '#8E44AD', blurb: 'Voices that sound exactly like people you know. Hang up on the pressure, not the person.', teaches: 'AI voice clones and CEO fraud' },
-  { id: 'romance', title: 'Too Good', kind: 'chat', icon: 'heart', x: 72, y: 22, color: '#E0527A', blurb: 'A new connection wants to help you invest. Keep your heart and your wallet apart.', teaches: 'Romance and crypto investment scams' },
-  { id: 'storm', title: 'Scam Storm', kind: 'storm', icon: 'alert', x: 50, y: 8, color: '#1A1A1A', boss: true, blurb: 'Boss round. Everything at once, faster. Eight of ten to clear it.', teaches: 'All of the above, under pressure' },
+  { id: 'texttrap', title: 'Text Trap', kind: 'sorter', icon: 'message', x: 50, y: 88, color: '#E20074', blurb: 'Texts fly in. Call each one Legit or Scam before the timer runs out.', teaches: 'Delivery, toll and account texts' },
+  { id: 'linklens', title: 'Link Lens', kind: 'links', icon: 'globe', x: 20, y: 68, color: '#7A3BFF', blurb: 'Three links, one is real. Read what comes right before the first slash.', teaches: 'Look-alike domains' },
+  { id: 'situations', title: 'Situation Room', kind: 'pick', icon: 'clipboard', x: 78, y: 48, color: '#2B6BE4', blurb: 'Seven everyday moments. Pick the move that keeps you safe.', teaches: 'QR codes, pop-ups, deposits, donations' },
+  { id: 'codekeeper', title: 'Code Keeper', kind: 'chat', icon: 'lock', x: 24, y: 28, color: '#1E9E5A', blurb: 'Your "bank" is texting. Pick the reply that keeps your code yours.', teaches: 'One-time codes and PINs' },
+  { id: 'storm', title: 'Scam Storm', kind: 'storm', icon: 'alert', x: 68, y: 10, color: '#1A1A1A', boss: true, blurb: 'Boss round. Everything at once, faster. Eight of ten to clear it.', teaches: 'All of the above, under pressure' },
 ];
 const STARS = r => r >= .9 ? 3 : r >= .7 ? 2 : r >= .5 ? 1 : 0;
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
