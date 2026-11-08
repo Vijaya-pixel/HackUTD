@@ -106,8 +106,18 @@ export async function weekTasks(lineId) {
     }
     rows = (await q('SELECT node, task_id, label, points, need_stars, done_at FROM game_tasks WHERE line_id = $1 AND week = $2', [lineId, week])).rows;
   }
-  const reward = await one('SELECT reward, earned_at FROM game_rewards WHERE line_id = $1 AND week = $2', [lineId, week]);
+  // Credit stops already cleared this week with enough stars (including wins from before the task was drawn).
+  const credited = await q(`UPDATE game_tasks t SET done_at = w.first_win
+      FROM (SELECT meta->>'node' AS node, max((meta->>'stars')::int) AS stars, min(time) AS first_win
+              FROM pet_events WHERE line_id = $1 AND kind = 'game_win' AND time >= date_trunc('week', now()) GROUP BY 1) w
+      WHERE t.line_id = $1 AND t.week = $2 AND t.done_at IS NULL AND t.node = w.node AND w.stars >= t.need_stars`, [lineId, week]);
+  if (credited.rowCount) rows = (await q('SELECT node, task_id, label, points, need_stars, done_at FROM game_tasks WHERE line_id = $1 AND week = $2', [lineId, week])).rows;
+  let reward = await one('SELECT reward, earned_at FROM game_rewards WHERE line_id = $1 AND week = $2', [lineId, week]);
   const points = rows.filter(r => r.done_at).reduce((a, r) => a + r.points, 0);
+  if (!reward && points >= WEEK_GOAL) {
+    await q('INSERT INTO game_rewards (line_id, week, reward) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [lineId, week, WEEK_REWARD]);
+    reward = await one('SELECT reward, earned_at FROM game_rewards WHERE line_id = $1 AND week = $2', [lineId, week]);
+  }
   return { key: week, goal: WEEK_GOAL, points, reward: WEEK_REWARD, rewardEarned: !!reward, earnedAt: reward?.earned_at || null,
     tasks: rows.map(r => ({ node: r.node, taskId: r.task_id, label: r.label, points: r.points, needStars: r.need_stars, done: !!r.done_at })) };
 }
@@ -117,9 +127,10 @@ async function completeTask(lineId, node, stars) {
   const t = await one('SELECT * FROM game_tasks WHERE line_id = $1 AND week = $2 AND node = $3', [lineId, week, node]);
   if (!t || t.done_at || stars < t.need_stars) return { completed: false, justEarned: false };
   await q('UPDATE game_tasks SET done_at = now() WHERE line_id = $1 AND week = $2 AND node = $3', [lineId, week, node]);
+  const hadReward = !!(await one('SELECT 1 FROM game_rewards WHERE line_id = $1 AND week = $2', [lineId, week])); // before weekTasks, which can grant it
   const w = await weekTasks(lineId);
   let justEarned = false;
-  if (w.points >= WEEK_GOAL && !w.rewardEarned) {
+  if (w.points >= WEEK_GOAL && !hadReward) {
     await q('INSERT INTO game_rewards (line_id, week, reward) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [lineId, week, WEEK_REWARD]);
     justEarned = true;
     petEvent(lineId, 'bonus', `Weekly goal reached: ${WEEK_REWARD}`, { week }).catch(() => {});

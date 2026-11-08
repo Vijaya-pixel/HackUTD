@@ -124,7 +124,7 @@ CHATS.romance = { them: 'Alex', steps: [
 /* ---------- state ---------- */
 function gameState() { if (!S.game) S.game = { progress: null, current: null, run: null, loading: false }; return S.game; }
 async function loadGame() {
-  const g = gameState(); if (g.loading) return; g.loading = true;
+  const g = gameState(); if (g.loading) return; g.loading = true; g.loadedAt = Date.now();
   try { const r = await api.get(`/game/${curLine().lineId}`); g.progress = r.progress || {}; g.week = r.week || null; if (r.pet) S.pet = r.pet; if (!g.current) g.current = defaultNode(); }
   catch (e) { g.progress = g.progress || {}; }
   g.loading = false; render();
@@ -184,6 +184,7 @@ function arrive(id) {
 function taskFor(id) { return gameState().week?.tasks?.find(t => t.node === id) || null; }
 function questMap() {
   const g = gameState();
+  if (g.progress && !g.run && Date.now() - (g.loadedAt || 0) > 10000) loadGame(); // keep the bar in step with the server
   if (!g.progress) { loadGame(); return `<div class="quest"><div class="map loading"><p>Loading your map…</p></div></div>`; }
   const P = S.pet, p = petPos(), here = nearNode(), W = g.week; g.current = here?.id || null;
   const stars = n => { const s = g.progress[n.id]?.stars || 0; return `<div class="stars">${[1, 2, 3].map(i => `<span class="${i <= s ? 'on' : ''}">★</span>`).join('')}</div>`; };
