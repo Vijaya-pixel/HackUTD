@@ -80,7 +80,7 @@ const fail = e => toast(e.message || 'Something went wrong');
 let callTimer = null;
 function go(screen) { S.stack.push({ screen }); S.sheet = null; save(); render(true); }
 function back() { S.stack.pop(); S.sheet = null; save(); render(true); }
-function setTab(t) { S.tab = t; S.stack = []; S.sheet = null; save(); render(true); }
+function setTab(t) { if (t === 'pet') t = 'learn'; S.tab = t; S.stack = []; S.sheet = null; save(); render(true); }
 const current = () => S.stack.length ? S.stack[S.stack.length - 1].screen : S.tab;
 function toast(msg, kind) { S.toast = { msg, kind }; renderOverlay(); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = null; renderOverlay(); }, 2800); }
 function openSheet(name, data) { S.sheet = { name, data }; S.reason = null; renderOverlay(); }
@@ -124,18 +124,22 @@ function balanceCard() {
 function homeScreen() {
   const st = stats();
   return `
-  ${header('Hey, Anne', { brand: true, icons: [['chat', 'toast', 'Messages are not part of this demo'], ['bell', 'toast', 'No new notifications']] })}
-  <p class="subhead">See what's new in T Life today</p>
-  <button class="card feature" data-act="go" data-val="scamshield" style="width:100%">
+  <div class="hero-head home">
+    <div class="brandbar"><span class="tmark">${ico('tmo')}</span><span class="tlife">T Life</span></div>
+    ${header('Hey, Anne', { brand: true, icons: [['chat', 'toast', 'Messages are not part of this demo'], ['bell', 'toast', 'No new notifications']] })}
+    <p class="subhead">See what's new in T Life today</p>
+  </div>
+  <button class="card feature lift" data-act="go" data-val="scamshield" style="width:100%">
     <div class="big">ScamShield: ${st.blocked} calls blocked</div>
     <p class="desc">Scam Block, Caller ID and AI voice detection are protecting ${LINES.length} lines on your account.</p>
     <span class="ulink">About ScamShield</span>
     <div class="stat-dark inset"><div class="st"><div class="n">${st.blocked}</div><div class="l">Blocked this month</div></div><div class="st"><div class="n">${st.flagged}</div><div class="l">Flagged calls</div></div></div>
     <div class="cta"><span>See ScamShield activity</span>${ico('chevR')}</div>
   </button>
+  <button class="card magenta tuesdays" data-act="tab" data-val="benefits" style="width:100%"><div class="between"><div><div class="eyebrow">T-Mobile Tuesdays</div><div class="big">This week's thanks</div><p class="desc">Free 7-Eleven coffee, 15¢ off gas at Shell and $5 off Little Caesars.</p></div><div class="tico">${ico('gift')}</div></div></button>
   ${balanceCard()}
   <h2 class="section">Quick actions</h2>
-  <div class="tiles">${tile('dollar', 'Pay bill', 'toast', 'Payments are not part of this demo')}${tile('shield', 'ScamShield', 'go', 'scamshield')}${tile('book', 'Scam practice', 'tab', 'learn')}${tile('upgrade', 'Upgrade', 'toast', 'Shopping is not part of this demo')}${tile('headset', 'Support', 'toast', 'Support chat is not part of this demo')}</div>
+  <div class="tiles">${tile('dollar', 'Pay bill', 'toast', 'Payments are not part of this demo')}${tile('shield', 'ScamShield', 'go', 'scamshield')}${tile('paw', 'Train with Buddy', 'tab', 'learn')}${tile('upgrade', 'Upgrade', 'toast', 'Shopping is not part of this demo')}${tile('headset', 'Support', 'toast', 'Support chat is not part of this demo')}</div>
   <h2 class="section">More for you</h2>
   <div class="promo">
     <div class="card dark"><div class="eyebrow">T-Satellite</div><div class="big">Connecting you anywhere</div></div>
@@ -504,26 +508,28 @@ async function openSession(id) { S.session = await api.get(`/learn/session/${id}
 async function openLesson(id) { S.lessonSession = await api.get(`/learn/session/${id}`); if (current() !== 'lesson') go('lesson'); else render(); }
 function learnScreen() {
   const L = S.learn;
-  if (!L) { loadLearn().catch(fail); return `${header('Learn', {})}<div class="card"><p class="desc">Loading your practice history…</p></div>`; }
+  if (!L) { loadLearn().catch(fail); return `${header('Learn', {})}${petStage()}<div class="card"><p class="desc">Loading your practice history…</p></div>`; }
   const st = L.stats, consent = L.consent && L.consent.active ? L.consent : null;
-  const sessionRow = s => row({ icon: CAT_ICON[s.scenario?.category] || 'message', cls: s.outcome === 'caught' ? 'green' : s.outcome ? 'red' : 'amber', title: esc(s.scenario?.brand || s.scenarioId), sub: `${esc(s.scenario?.categoryLabel || '')} · ${s.outcome === 'caught' ? 'You caught it' : s.outcome === 'fell_for_it' ? 'You fell for it' : s.outcome === 'opted_out' ? 'Opted out' : 'In progress'}${s.channel === 'imessage' ? ' · iMessage' : ''}`, meta: ago(Math.round((Date.now() - new Date(s.startedAt)) / 60000)), act: isOver(s) ? 'lesson' : 'session', val: s.id });
+  const sessionRow = s => row({ icon: CAT_ICON[s.scenario?.category] || 'message', cls: s.outcome === 'caught' ? 'green' : s.outcome ? 'red' : 'amber', title: esc(s.scenario?.brand && s.scenario.brand !== 'none' ? s.scenario.brand : (s.scenario?.categoryLabel || s.scenarioId)), sub: `${esc(s.scenario?.categoryLabel || '')} · ${s.outcome === 'caught' ? 'You caught it' : s.outcome === 'fell_for_it' ? 'You fell for it' : s.outcome === 'opted_out' ? 'Opted out' : 'In progress'}${s.channel === 'imessage' ? ' · iMessage' : ''}`, meta: ago(Math.round((Date.now() - new Date(s.startedAt)) / 60000)), act: isOver(s) ? 'lesson' : 'session', val: s.id });
   return `
-  ${header('Learn', { icons: [['search', 'sheet', 'detect']] })}
-  <p class="subhead">Practice spotting scams before a real one finds you</p>
-  <div class="card magenta"><div class="eyebrow">Safe Signal practice</div><div class="big">${consent ? 'Scam practice is on' : 'Train your scam radar'}</div>
-    <p class="desc">${consent ? `Realistic practice texts arrive ${consent.channel === 'imessage' ? 'on your phone over iMessage' : 'in the app'}. Nothing you say leaves the sandbox.` : 'Get realistic fake scam texts in a safe sandbox, then a lesson on what to watch for.'}</p>
-    <div class="proto-stats" style="border-top-color:rgba(255,255,255,.3)"><div class="st"><div class="n">${st.total}</div><div class="l">Sessions</div></div><div class="st"><div class="n">${st.caught}</div><div class="l">Caught</div></div><div class="st"><div class="n" style="font-size:17px;line-height:1.4">${esc(st.weakestLabel || '—')}</div><div class="l">Weak spot</div></div></div>
-    ${consent ? '' : `<div class="btn-row"><button class="btn white" data-act="sheet" data-val="optin">Start scam practice</button></div>`}</div>
-  ${L.active ? `<button class="card tint" data-act="session" data-val="${L.active.id}" style="width:100%"><div class="head"><div class="ico">${ico('message')}</div><div><div class="lbl">Practice in progress</div><div class="big" style="font-size:18px">${esc(L.active.scenario?.brand || '')} is texting you</div></div></div><div class="cta"><span>Continue the conversation</span>${ico('chevR')}</div></button>` : ''}
-  ${consent ? `<h2 class="section">Quick actions</h2>
-  <div class="tiles">${tile('message', 'Practice now', 'practice', 'simulator', true)}${tile('phone', 'Text my phone', 'practice', 'imessage')}${tile('search', 'Check a text', 'sheet', 'detect')}${tile('settings', 'Preferences', 'sheet', 'optin')}</div>
-  <h2 class="section">Pick a scenario</h2>
+  ${header('Learn', { icons: [['search', 'sheet', 'detect'], ['settings', 'sheet', 'optin']] })}
+  ${petStage()}
+  ${L.active ? `<button class="card" data-act="session" data-val="${L.active.id}" style="width:100%"><div class="head"><div class="ico">${ico('message')}</div><div><div class="lbl">Practice in progress</div><div class="big" style="font-size:18px">${esc(L.active.scenario?.brand && L.active.scenario.brand !== 'none' ? L.active.scenario.brand : 'Someone')} is texting you</div></div></div><div class="cta"><span>Continue the conversation</span>${ico('chevR')}</div></button>` : ''}
+  ${consent ? '' : `<div class="card magenta"><div class="eyebrow">Safe Signal practice</div><div class="big">Train your scam radar</div><p class="desc">Get realistic practice texts in a safe sandbox or on your phone. Catch them and Buddy gets stronger; tap the link and Buddy takes the hit.</p><div class="btn-row"><button class="btn white" data-act="sheet" data-val="optin">Start scam practice</button></div></div>`}
+  <h2 class="section">Train with Buddy</h2>
+  <div class="tiles">${tile('message', 'Practice now', 'practice', 'simulator')}${tile('phone', 'Text my phone', 'practice', 'imessage')}${tile('sparkles', 'Quick check', 'quizNow', '')}${tile('search', 'Check a text', 'sheet', 'detect')}</div>
+  ${consent ? `<h2 class="section">Pick a scenario</h2>
   <div class="chips">${L.categories.map(c => `<button class="chip ${S.pickCategory === c.id ? 'on' : ''}" data-act="pickCat" data-val="${c.id}">${c.label}</button>`).join('')}</div>
   <p class="note">${S.pickCategory ? 'Next practice will use this category. Tap again to clear.' : 'Leave unselected and we pick from your interests, avoiding recent repeats.'}</p>` : ''}
-  ${L.skills.length ? `<h2 class="section">Your scam radar</h2><div class="card">${L.skills.sort((a, b) => a.score - b.score).map(k => `<div class="skill"><div class="row-top"><span>${esc(k.label)}</span><span class="muted">${k.caught}/${k.encountered} caught</span></div><div class="bar"><div class="fill ${k.score >= .67 ? 'good' : k.score >= .34 ? 'mid' : 'low'}" style="width:${Math.max(6, Math.round(k.score * 100))}%"></div></div></div>`).join('')}<p class="note">Scored per red-flag type across your sessions. The weakest one drives the next scenario.</p></div>` : ''}
+  ${petDashboard()}
+  ${L.skills.length ? `<h2 class="section">Your scam radar</h2><div class="card">${L.skills.sort((a, b) => a.score - b.score).map(k => `<div class="skill"><div class="row-top"><span>${esc(k.label)}</span><span class="muted">${k.caught}/${k.encountered} caught</span></div><div class="bar"><div class="fill ${k.score >= .67 ? 'good' : k.score >= .34 ? 'mid' : 'low'}" style="width:${Math.max(6, Math.round(k.score * 100))}%"></div></div></div>`).join('')}<p class="note">Scored per red-flag type across ${st.total} session${st.total === 1 ? '' : 's'}. The weakest one drives the next scenario.</p></div>` : ''}
   <h2 class="section">Recent practice</h2>
-  <div class="card flush">${L.sessions.length ? L.sessions.slice(0, 8).map(sessionRow).join('') : emptyHtml('No practice sessions yet', 'message')}</div>
-  <p class="note">Practice texts are clearly marked as training the moment you tap a link or share anything sensitive. Your replies are redacted before storage and never quoted back verbatim.</p>`;
+  <div class="card flush">${L.sessions.length ? L.sessions.slice(0, 6).map(sessionRow).join('') : emptyHtml('No practice sessions yet', 'message')}</div>
+  ${petLog()}
+  <div class="card flush">
+    <div class="row"><div class="ico">${ico('bell')}</div><div class="txt"><div class="t">Quick checks from Buddy</div><div class="s">A question bubble now and then while you are on this tab</div></div><button class="switch ${S.quizOn ? 'on' : ''}" data-act="quizToggle" role="switch" aria-checked="${!!S.quizOn}"></button></div>
+  </div>
+  <p class="note">Practice texts are clearly marked as training the moment you tap a link or share anything sensitive. Replies are redacted before storage. Buddy only sees outcomes, never real calls or texts.</p>`;
 }
 function learnChatScreen() {
   const s = S.session;
@@ -584,8 +590,8 @@ function detectSheet() {
 }
 
 /* ---------- render ---------- */
-const TABS = [['home', 'Home', 'home'], ['learn', 'Learn', 'book'], ['benefits', 'Benefits', 'gift'], ['services', 'Services', 'grid'], ['pet', 'Buddy', 'paw'], ['account', 'Account', 'user']];
-const SCREENS = { home: homeScreen, pet: petScreen, shop: shopScreen, learn: learnScreen, 'learn-chat': learnChatScreen, lesson: lessonScreen, benefits: benefitsScreen, services: servicesScreen, account: accountScreen, scamshield: scamshieldScreen, activity: activityScreen, lookup: lookupScreen, blocklist: () => listScreen('blocklist'), allowlist: () => listScreen('allowlist'), categories: categoriesScreen, 'ss-settings': settingsScreen, family: familyScreen };
+const TABS = [['home', 'Home', 'home'], ['learn', 'Learn', 'paw'], ['benefits', 'Benefits', 'gift'], ['services', 'Services', 'grid'], ['account', 'Account', 'user']];
+const SCREENS = { home: homeScreen, pet: learnScreen, shop: shopScreen, learn: learnScreen, 'learn-chat': learnChatScreen, lesson: lessonScreen, benefits: benefitsScreen, services: servicesScreen, account: accountScreen, scamshield: scamshieldScreen, activity: activityScreen, lookup: lookupScreen, blocklist: () => listScreen('blocklist'), allowlist: () => listScreen('allowlist'), categories: categoriesScreen, 'ss-settings': settingsScreen, family: familyScreen };
 function render(resetScroll) {
   const content = document.getElementById('content'), tabbar = document.getElementById('tabbar');
   if (!S.ready) {
@@ -597,7 +603,7 @@ function render(resetScroll) {
   const scr = current(); const top = content.scrollTop; const active = document.activeElement; const bind = active && active.dataset ? active.dataset.bind : null; const pos = active && active.selectionStart;
   content.innerHTML = (SCREENS[scr] || homeScreen)();
   content.classList.toggle('no-tabs', S.stack.length > 0);
-  content.classList.toggle('hero', scr === 'benefits');
+  content.classList.toggle('hero', scr === 'benefits' || scr === 'home');
   tabbar.classList.toggle('hidden', S.stack.length > 0);
   tabbar.innerHTML = TABS.map(([id, label, icon]) => `<button class="tab ${S.tab === id ? 'on' : ''}" data-act="tab" data-val="${id}">${ico(icon)}<span>${label}</span></button>`).join('');
   content.scrollTop = resetScroll ? 0 : top;
@@ -638,7 +644,7 @@ function renderOverlay() {
   else { const k = callKey(); if (k !== last.call) updateCall(callEl, k); else { const t = callEl.querySelector('.timer'); if (t) t.textContent = fmtTime(S.call.t); } }
   const th = S.toast ? `<div class="toast ${S.toast.kind || ''}">${ico(S.toast.kind === 'block' ? 'shieldCheck' : 'checkCircle')}<span>${esc(S.toast.msg)}</span></div>` : '';
   if (th !== last.toast) { toastEl.innerHTML = th; last.toast = th; }
-  document.querySelector('.statusbar').classList.toggle('light', !!S.call || current() === 'benefits');
+  document.querySelector('.statusbar').classList.toggle('light', !!S.call || current() === 'benefits' || current() === 'home');
 }
 
 /* ---------- events ---------- */

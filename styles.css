@@ -444,3 +444,37 @@ textarea.area{width:100%;border:1px solid var(--line);border-radius:12px;padding
 .quizpop .qr p{color:var(--muted);margin-top:4px;line-height:1.4}
 .quizpop.right{border-color:var(--green)}
 .quizpop.wrong{border-color:var(--red)}
+
+/* ---------- T-Mobile themed Home hero ---------- */
+.hero-head.home{padding:58px 16px 54px;background:linear-gradient(160deg,#E20074 0%,#C2006A 70%,#A8005C 100%)}
+.hero-head.home .header .h1.brand{color:#fff}
+.hero-head.home .subhead{color:rgba(255,255,255,.85);margin:-4px 0 0}
+.hero-head.home .icon-btn{color:#fff}
+.brandbar{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.brandbar .tmark{width:30px;height:30px;border-radius:7px;background:#fff;color:var(--magenta);display:inline-flex;align-items:center;justify-content:center}
+.brandbar .tmark svg{width:20px;height:20px}
+.brandbar .tlife{font-weight:700;font-size:15px;color:#fff;letter-spacing:.2px}
+.card.feature.lift{margin-top:-40px;position:relative;z-index:2}
+.card.magenta.tuesdays .desc{color:rgba(255,255,255,.85)}
+.card.magenta.tuesdays .tico{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex:none;color:#fff}
+.card.magenta.tuesdays .tico svg{width:26px;height:26px}
+/* Buddy's question bubble */
+.stage .bubble.ask{display:flex;align-items:center;gap:10px;width:100%;background:var(--magenta-tint);border:1.5px solid var(--magenta);color:var(--ink);cursor:pointer;animation:askpulse 1.6s ease-in-out infinite}
+.stage .bubble.ask::before{border-bottom-color:var(--magenta-tint)}
+.stage .bubble.ask .qmark{width:30px;height:30px;border-radius:50%;background:var(--magenta);color:#fff;font-weight:800;font-size:18px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.stage .bubble.ask .tap{margin-left:auto;font-size:13px;color:var(--magenta);font-weight:600}
+@keyframes askpulse{0%,100%{box-shadow:0 0 0 0 rgba(226,0,116,.35)}50%{box-shadow:0 0 0 8px rgba(226,0,116,0)}}
+.stage .bubble.quiz{background:#fff;border:1.5px solid var(--line);padding:12px 14px}
+.stage .bubble.quiz::before{border-bottom-color:#fff}
+.stage .bubble.quiz .qh{display:flex;justify-content:space-between;align-items:center}
+.stage .bubble.quiz .eyebrow{font-size:12px;font-weight:600;color:var(--magenta)}
+.stage .bubble.quiz .icon-btn{width:30px;height:30px;margin:-6px -8px 0 0}
+.stage .bubble.quiz .icon-btn svg{width:18px;height:18px}
+.stage .bubble.quiz .q{font-size:15px;line-height:1.4;font-weight:500;margin-top:4px}
+.stage .bubble.quiz .qo{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.stage .bubble.quiz .qo .chip{font-size:14px;padding:8px 14px;white-space:normal;text-align:left;font-weight:500}
+.stage .bubble.quiz .qo .chip:disabled{opacity:.5}
+.stage .bubble.quiz .qr{margin-top:8px;font-size:14px}
+.stage .bubble.quiz .qr p{color:var(--muted);margin-top:4px;line-height:1.4;font-weight:400}
+.stage .bubble.quiz.right{border-color:var(--green)}
+.stage .bubble.quiz.wrong{border-color:var(--red)}
