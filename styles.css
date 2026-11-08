@@ -866,16 +866,57 @@ textarea.area{width:100%;border:1px solid var(--line);border-radius:12px;padding
 .quest .hud .pin{position:absolute;top:50%;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid var(--magenta);color:var(--magenta);display:flex;align-items:center;justify-content:center;transition:left 1.2s cubic-bezier(.2,.8,.2,1);box-shadow:0 2px 6px rgba(0,0,0,.15)}
 .quest .hud .pin svg{width:12px;height:12px}
 .quest .hud .pin.earned{background:var(--magenta);color:#fff}
-/* Keep the Learn game and selected stop visible together above the tab bar. */
-#content:has(.quest){padding:0 0 86px;overflow:hidden}
-.quest{width:100%;height:100%;display:flex;flex-direction:column;min-height:0}
-.quest .hud.one{flex:none}
-.quest .map{height:auto;min-height:0;flex:1;margin:0 0 10px}
-.quest .node{transform:translate(-50%,-50%) scale(1.12)}
-.quest .nodecard{flex:none;padding:12px 14px;margin:0 16px 6px}
-.quest .nodecard .desc{font-size:14px;margin:6px 0 8px}
-.quest .nodecard .btn{height:44px;font-size:16px;margin-top:8px}
+.quest .map{height:calc(100dvh - 236px);min-height:700px}
+.quest .nodecard{padding:12px 14px;margin-top:10px}
+.quest .nodecard .desc{font-size:14px;margin-top:4px}
+.quest .nodecard .btn{height:44px;font-size:16px;margin-top:10px}
 .arena .prompt.sit .big{font-size:19px;line-height:1.3}
 .arena .links.opts .link span{white-space:normal;line-height:1.3}
 .arena .links.opts .link span{font-family:inherit;font-size:15px}
 .arena .links.opts .link,.arena .links.opts .link span{font-family:var(--font);font-size:15px}
+
+/* Use the browser viewport as the app canvas, with navigation anchored to its bottom. */
+body{display:block;min-height:100dvh;background:var(--bg)}
+.phone{width:100%;height:100dvh;min-height:100vh;padding:0;border-radius:0;background:var(--bg);box-shadow:none}
+.screen{width:100%;height:100%;min-height:100dvh;border-radius:0}
+.content{padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px))}
+.tabbar{position:fixed;bottom:0;height:calc(86px + env(safe-area-inset-bottom, 0px));padding-bottom:calc(22px + env(safe-area-inset-bottom, 0px))}
+#content:has(.quest){padding-bottom:calc(86px + env(safe-area-inset-bottom, 0px))}
+.content.hero{margin-top:0;padding-top:0}
+.hero-head{padding-top:calc(16px + env(safe-area-inset-top, 0px))}
+.hero-head.home{padding-top:calc(16px + env(safe-area-inset-top, 0px));padding-bottom:22px}
+.tabbar{left:16px;right:16px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));height:76px;padding:8px 6px 10px;border:1px solid rgba(255,255,255,.72);border-radius:24px;background:rgba(255,255,255,.76);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);box-shadow:0 8px 28px rgba(20,20,30,.16)}
+#content:has(.quest){display:flex;flex-direction:column;padding:0 0 calc(104px + env(safe-area-inset-bottom, 0px));overflow:hidden}
+#content:has(.quest) > .header{flex:none;margin:0 16px}
+#content:has(.quest) > .quest{height:auto;flex:1;min-height:0}
+.quest{display:flex;flex-direction:column;min-height:0}
+.quest .hud.one{flex:none}
+.quest .map{height:auto;min-height:0;flex:1;margin-bottom:0}
+
+/* Organic map: varied cloud sizes, Buddy kept inside the map */
+.quest .cloudnode .cloudshape{scale:var(--s,1)}
+.quest .map{overflow:hidden}
+.quest .avatar{z-index:6}
+#content:has(.quest) > .quest{margin:0}
+.quest .signpost{right:8px;bottom:10px}
+.quest .signpost{left:8px;right:auto;bottom:10px}
+
+/* ---------- Learn = the game: one full-screen background, no scrolling, padded play area ---------- */
+.screen:has(.quest){background:linear-gradient(180deg,#FFD7EC 0%,#FBE9F3 48%,#F3EEFA 100%)}
+#content:has(.quest){background:transparent;overflow:hidden}
+#content:has(.quest) > .quest{flex:1 1 auto;min-height:0}
+.quest .hud,.quest .hud.one{background:transparent}
+.quest .map{background:transparent;border-radius:0;min-height:0;overflow:visible;container-type:size}
+.quest .map .hills{opacity:.4}
+/* every stop, the path and Buddy live in this inset box, so nothing reaches the top bar or the nav */
+.quest .playfield{position:absolute;inset:22px 12px 46px 12px}
+.quest .playfield .road{position:absolute;inset:0;width:100%;height:100%}
+.quest .signpost{top:6px;right:8px;bottom:auto;left:auto;padding:6px 10px;font-size:12px}
+.quest .signpost svg{width:18px;height:18px}
+/* short phones: shrink clouds and Buddy instead of scrolling */
+@container (max-height:600px){ .quest .cloudnode{scale:.86} .quest .avatar{scale:.86} .quest .playfield{--k:.86} }
+@container (max-height:520px){ .quest .cloudnode{scale:.74} .quest .avatar{scale:.76} .quest .playfield{--k:.76} }
+@container (max-height:440px){ .quest .cloudnode{scale:.64} .quest .avatar{scale:.66} .quest .playfield{--k:.66} }
+/* locks: just the icon, no gray disc; the points badges keep their pill */
+.quest .cloudnode.locked .orb{background:transparent;box-shadow:none;color:#A2A2AA}
+.quest .cloudnode.locked .orb svg{width:24px;height:24px}

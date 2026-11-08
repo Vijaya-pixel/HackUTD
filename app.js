@@ -639,7 +639,6 @@ function renderOverlay() {
   else { const k = callKey(); if (k !== last.call) updateCall(callEl, k); else { const t = callEl.querySelector('.timer'); if (t) t.textContent = fmtTime(S.call.t); } }
   const th = S.toast ? `<div class="toast ${S.toast.kind || ''}">${ico(S.toast.kind === 'block' ? 'shieldCheck' : 'checkCircle')}<span>${esc(S.toast.msg)}</span></div>` : '';
   if (th !== last.toast) { toastEl.innerHTML = th; last.toast = th; }
-  document.querySelector('.statusbar').classList.toggle('light', !!S.call || current() === 'benefits' || current() === 'home');
 }
 
 /* ---------- events ---------- */

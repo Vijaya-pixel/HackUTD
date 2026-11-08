@@ -5,11 +5,16 @@
 
 /* ---------- the map ---------- */
 const QUEST = [
-  { id: 'texttrap', title: 'Text Trap', kind: 'sorter', icon: 'message', x: 50, y: 88, color: '#E20074', blurb: 'Texts fly in. Call each one Legit or Scam before the timer runs out.', teaches: 'Delivery, toll and account texts' },
-  { id: 'linklens', title: 'Link Lens', kind: 'links', icon: 'globe', x: 20, y: 68, color: '#7A3BFF', blurb: 'Three links, one is real. Read what comes right before the first slash.', teaches: 'Look-alike domains' },
-  { id: 'situations', title: 'Situation Room', kind: 'pick', icon: 'clipboard', x: 78, y: 48, color: '#2B6BE4', blurb: 'Seven everyday moments. Pick the move that keeps you safe.', teaches: 'QR codes, pop-ups, deposits, donations' },
-  { id: 'codekeeper', title: 'Code Keeper', kind: 'chat', icon: 'lock', x: 24, y: 28, color: '#1E9E5A', blurb: 'Your "bank" is texting. Pick the reply that keeps your code yours.', teaches: 'One-time codes and PINs' },
-  { id: 'storm', title: 'Scam Storm', kind: 'storm', icon: 'alert', x: 68, y: 10, color: '#1A1A1A', boss: true, blurb: 'Boss round. Everything at once, faster. Eight of ten to clear it.', teaches: 'All of the above, under pressure' },
+  { id: 'texttrap', title: 'Text Trap', kind: 'sorter', icon: 'message', x: 47, y: 92, s: 1.04, color: '#E20074', blurb: 'Texts fly in. Call each one Legit or Scam before the timer runs out.', teaches: 'Delivery, toll and account texts' },
+  { id: 'linklens', title: 'Link Lens', kind: 'links', icon: 'globe', x: 19, y: 81, s: 0.9, color: '#7A3BFF', blurb: 'Three links, one is real. Read what comes right before the first slash.', teaches: 'Look-alike domains' },
+  { id: 'hangup', title: 'Hang Up', kind: 'call', icon: 'phoneOff', x: 78, y: 80, s: 0.86, color: '#D7263D', blurb: 'A caller talks. Hit Hang up the moment you hear the red flag, before they ask for anything.', teaches: 'Phone scams and pressure' },
+  { id: 'situations', title: 'Situation Room', kind: 'pick', icon: 'clipboard', x: 81, y: 61, s: 0.96, color: '#2B6BE4', blurb: 'Seven everyday moments. Pick the move that keeps you safe.', teaches: 'QR codes, pop-ups, deposits, donations' },
+  { id: 'codekeeper', title: 'Code Keeper', kind: 'chat', icon: 'lock', x: 50, y: 58, s: 0.92, color: '#1E9E5A', blurb: 'Your "bank" is texting. Pick the reply that keeps your code yours.', teaches: 'One-time codes and PINs' },
+  { id: 'jobhunt', title: 'Dream Job', kind: 'chat', icon: 'star', x: 17, y: 50, s: 1.02, color: '#0FA3B1', blurb: 'A recruiter texts the perfect offer. See how far you get without paying to work.', teaches: 'Fake checks and advance fees' },
+  { id: 'familysos', title: 'Family SOS', kind: 'chat', icon: 'users', x: 45, y: 38, s: 0.88, color: '#E09A00', blurb: 'An emergency text from "family". Choose what to do, step by step.', teaches: 'Family emergency scams' },
+  { id: 'deepfake', title: 'Voice Clone', kind: 'call', calls: 'clone', icon: 'mic', x: 81, y: 38, s: 0.96, color: '#8E44AD', blurb: 'Voices that sound exactly like people you know. Hang up on the pressure, not the person.', teaches: 'AI voice clones and CEO fraud' },
+  { id: 'romance', title: 'Too Good', kind: 'chat', icon: 'heart', x: 61, y: 23, s: 0.9, color: '#E0527A', blurb: 'A new connection wants to help you invest. Keep your heart and your wallet apart.', teaches: 'Romance and crypto investment scams' },
+  { id: 'storm', title: 'Scam Storm', kind: 'storm', icon: 'alert', x: 27, y: 12, s: 1.1, color: '#1A1A1A', boss: true, blurb: 'Boss round. Everything at once, faster. Eight of ten to clear it.', teaches: 'All of the above, under pressure' },
 ];
 const STARS = r => r >= .9 ? 3 : r >= .7 ? 2 : r >= .5 ? 1 : 0;
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -136,13 +141,25 @@ const posKey = () => `buddyPos:${curLine().lineId}`;
 function petPos() {
   const g = gameState();
   if (!g.pos) { try { g.pos = JSON.parse(localStorage.getItem(posKey())) || null; } catch {} if (!g.pos) { const n = QUEST[0]; g.pos = { x: n.x, y: n.y, at: n.id }; } }
+  { const at = QUEST.find(q => q.id === g.pos.at); if (at) { g.pos.x = at.x; g.pos.y = at.y; } } // layouts change; the checkpoint is the truth
   if (!g.pos.at) { const n = QUEST.find(q => Math.abs(q.x - g.pos.x) < 6 && Math.abs(q.y - g.pos.y) < 6) || QUEST[0]; g.pos = { x: n.x, y: n.y, at: n.id }; }
   // a remembered spot that is locked now (layout changed, new line) goes back to the next open stop
   if (g.progress && !unlocked(nodeIndex(g.pos.at))) { const n = QUEST[nodeIndex(defaultNode())]; g.pos = { x: n.x, y: n.y, at: n.id }; try { localStorage.setItem(posKey(), JSON.stringify(g.pos)); } catch {} }
   return g.pos;
 }
 function nearNode() { const p = petPos(); return QUEST.find(n => n.id === p.at) || null; }
-const cloudPath = () => { const p = QUEST.map(n => [n.x, n.y]); let d = `M ${p[0][0]} ${p[0][1]}`; for (let i = 1; i < p.length; i++) { const [x0, y0] = p[i - 1], [x1, y1] = p[i]; d += ` Q ${(x0 + x1) / 2 + (i % 2 ? 14 : -14)} ${(y0 + y1) / 2} ${x1} ${y1}`; } return d; };
+const cloudPath = () => {
+  const p = QUEST.map(n => [n.x, n.y]), bend = [9, -6, 12, -10, 7, -12, 5, 11, -8];
+  let d = `M ${p[0][0]} ${p[0][1]}`;
+  for (let i = 1; i < p.length; i++) {
+    const [x0, y0] = p[i - 1], [x1, y1] = p[i], b = bend[(i - 1) % bend.length], dx = x1 - x0, dy = y1 - y0;
+    d += ` C ${x0 + dx * .3 + b} ${y0 + dy * .15} ${x0 + dx * .7 - b * .6} ${y0 + dy * .85} ${x1} ${y1}`;
+  }
+  return d;
+};
+/** Avatar anchor kept inside the map: Buddy stands above its cloud, so it needs headroom at the top and margin at the sides. */
+const avLeft = x => `clamp(56px, ${x}%, calc(100% - 56px))`;
+const avTop = y => `clamp(calc(96px * var(--k, 1)), ${y}%, 100%)`;
 const walkTimers = {};
 function walkTo(id) {
   const g = gameState(); if (g.run) return;
@@ -153,7 +170,7 @@ function walkTo(id) {
   try { localStorage.setItem(posKey(), JSON.stringify(p)); } catch {}
   if (window.Buddy3D) window.Buddy3D.face(dx);
   const av = document.querySelector('.quest .avatar');
-  if (av) { av.style.transitionDuration = ms + 'ms'; av.style.setProperty('--hops', String(Math.max(2, Math.round(ms / 300)))); av.style.left = n.x + '%'; av.style.top = n.y + '%'; av.classList.remove('travel'); void av.offsetWidth; av.style.animationDuration = ms + 'ms'; av.classList.add('travel'); }
+  if (av) { av.style.transitionDuration = ms + 'ms'; av.style.setProperty('--hops', String(Math.max(2, Math.round(ms / 300)))); av.style.left = avLeft(n.x); av.style.top = avTop(n.y); av.classList.remove('travel'); void av.offsetWidth; av.style.animationDuration = ms + 'ms'; av.classList.add('travel'); }
   document.querySelectorAll('.quest .node').forEach(el => el.classList.toggle('target', el.dataset.val === id));
   clearTimeout(walkTimers.arrive);
   walkTimers.arrive = setTimeout(() => { if (window.Buddy3D) window.Buddy3D.face(0); g.current = id; arrive(id); }, ms + 60);
@@ -170,7 +187,7 @@ function questMap() {
   if (!g.progress) { loadGame(); return `<div class="quest"><div class="map loading"><p>Loading your map…</p></div></div>`; }
   const P = S.pet, p = petPos(), here = nearNode(), W = g.week; g.current = here?.id || null;
   const stars = n => { const s = g.progress[n.id]?.stars || 0; return `<div class="stars">${[1, 2, 3].map(i => `<span class="${i <= s ? 'on' : ''}">★</span>`).join('')}</div>`; };
-  const nodes = QUEST.map((n, i) => { const un = unlocked(i), done = (g.progress[n.id]?.stars || 0) > 0, t = taskFor(n.id); return `<button class="node cloudnode ${un ? '' : 'locked'} ${done ? 'done' : ''} ${here?.id === n.id ? 'current' : ''} ${n.boss ? 'boss' : ''}" style="left:${n.x}%;top:${n.y}%;--c:${n.color}" data-act="questSelect" data-val="${n.id}"><div class="cloudshape ${g.diving === n.id ? 'puff' : ''}"><i></i><i></i><i></i><div class="orb">${ico(un ? n.icon : 'lock')}</div>${t ? `<div class="pts ${t.done ? 'done' : ''}">${t.done ? ico('check') : '+' + t.points}</div>` : ''}</div>${stars(n)}<div class="nl">${n.title}</div></button>`; }).join('');
+  const nodes = QUEST.map((n, i) => { const un = unlocked(i), done = (g.progress[n.id]?.stars || 0) > 0, t = taskFor(n.id); return `<button class="node cloudnode ${un ? '' : 'locked'} ${done ? 'done' : ''} ${here?.id === n.id ? 'current' : ''} ${n.boss ? 'boss' : ''}" style="left:${n.x}%;top:${n.y}%;--c:${n.color};--s:${n.s || 1}" data-act="questSelect" data-val="${n.id}"><div class="cloudshape ${g.diving === n.id ? 'puff' : ''}"><i></i><i></i><i></i><div class="orb">${ico(un ? n.icon : 'lock')}</div>${t ? `<div class="pts ${t.done ? 'done' : ''}">${t.done ? ico('check') : '+' + t.points}</div>` : ''}</div>${stars(n)}<div class="nl">${n.title}</div></button>`; }).join('');
   const reaction = S.petAnim?.kind === 'heal' ? 'celebrating' : S.petAnim ? 'surprised' : null;
   const emerge = g.emerge; g.emerge = false;
   setTimeout(() => {
@@ -182,20 +199,6 @@ function questMap() {
   }, 0);
   const energy = P ? P.health : 0, eCls = energy >= 60 ? 'good' : energy >= 40 ? 'mid' : 'low';
   const pct = W ? Math.min(100, Math.round(W.points / W.goal * 100)) : 0;
-  let card;
-  if (here) {
-    const i = nodeIndex(here.id), prog = g.progress[here.id], locked = !unlocked(i), t = taskFor(here.id);
-    card = `<div class="nodecard" style="--c:${here.color}">
-      <div class="nc-top"><div class="orb">${ico(here.icon)}</div><div class="nc-t"><div class="eyebrow">${here.boss ? 'Boss cloud' : `Stop ${i + 1} of ${QUEST.length}`} · ${esc(here.teaches)}</div><div class="big">${here.title}</div></div>${stars(here)}</div>
-      ${t ? `<div class="task ${t.done ? 'done' : ''}"><div class="tp">${t.done ? ico('check') : '+' + t.points}</div><div class="tt"><div class="tl">This week's T-Mobile task</div><div class="tn">${esc(t.label)}</div></div>${t.done ? '<div class="tdone">Done</div>' : `<div class="tneed">${'★'.repeat(t.needStars)}</div>`}</div>` : ''}
-      <p class="desc">${esc(here.blurb)}</p>
-      ${prog ? `<div class="nc-meta">Best ${prog.best} · played ${prog.plays}×</div>` : ''}
-      ${locked ? `<button class="btn outline" disabled>${ico('lock')} Clear ${QUEST[i - 1].title} first</button>` : `<button class="btn primary" data-act="questSelect" data-val="${here.id}">${ico('sparkles')} ${prog ? 'Jump in again' : 'Jump in'}</button>`}
-    </div>`;
-  } else {
-    const next = QUEST.find((n, i) => unlocked(i) && !(g.progress[n.id]?.stars)) || QUEST[QUEST.length - 1];
-    card = `<div class="nodecard hint" style="--c:#E20074"><div class="nc-top"><div class="orb">${ico('paw')}</div><div class="nc-t"><div class="eyebrow">Tap a cloud</div><div class="big">Buddy flies to it</div></div></div><p class="desc">Next up: <b>${next.title}</b> · ${esc(next.teaches)}.</p></div>`;
-  }
   return `
   <div class="quest">
     <div class="hud one">
@@ -206,12 +209,13 @@ function questMap() {
     </div>
     <div class="map">
       <div class="hills"></div>
-      <svg class="road dotted" viewBox="0 0 100 100" preserveAspectRatio="none"><path class="dots" d="${cloudPath()}"/></svg>
-      ${nodes}
-      <div class="avatar ${g.diving ? 'dive' : emerge ? 'emerge' : ''}" style="left:${p.x}%;top:${p.y}%"><div class="pet3d">${petSvg(P?.mood || 'happy')}</div></div>
+      <div class="playfield">
+        <svg class="road dotted" viewBox="0 0 100 100" preserveAspectRatio="none"><path class="dots" d="${cloudPath()}"/></svg>
+        ${nodes}
+        <div class="avatar ${g.diving ? 'dive' : emerge ? 'emerge' : ''}" style="left:${avLeft(p.x)};top:${avTop(p.y)}"><div class="pet3d">${petSvg(P?.mood || 'happy')}</div></div>
+      </div>
       <button class="signpost" data-act="practice" data-val="imessage">${ico('phone')}<span>Field test<br><small>Text my phone</small></span></button>
     </div>
-    ${card}
   </div>`;
 }
 
