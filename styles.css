@@ -851,3 +851,7 @@ textarea.area{width:100%;border:1px solid var(--line);border-radius:12px;padding
 .arena .taskdone{display:block;text-align:center}
 .arena .taskdone svg{vertical-align:-4px;margin-right:4px}
 .quest .avatar.dive{pointer-events:none}
+/* T-Mobile mark on the Home hero: white T, no box */
+.brandbar .tmark{background:transparent;color:#fff;width:30px;height:30px;border-radius:0}
+.brandbar .tmark svg{width:28px;height:28px}
+.brandbar .tlife{font-size:16px}
