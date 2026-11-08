@@ -4,11 +4,12 @@
   "version": "0.0.1",
   "scripts": {
     "build": "pnpm -r build",
-    "dev:server": "pnpm --filter @safe-signal/server dev",
+    "dev:server": "pnpm build:shared && pnpm --filter @safe-signal/server dev",
     "dev:mobile": "pnpm --filter @safe-signal/mobile dev",
     "test": "pnpm -r test",
-    "eval": "pnpm --filter @safe-signal/shared eval",
-    "seed": "pnpm --filter @safe-signal/server seed"
+    "eval": "pnpm build:shared && pnpm --filter @safe-signal/shared eval",
+    "seed": "pnpm build:shared && pnpm --filter @safe-signal/server seed",
+    "build:shared": "pnpm --filter @safe-signal/shared build"
   },
   "devDependencies": {
     "typescript": "^5.5.0"
