@@ -1,0 +1,6 @@
+node_modules/
+server/.env
+.env
+tiger-cloud-*credentials*.txt
+*.log
+server/*.log
