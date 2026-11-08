@@ -115,3 +115,33 @@ phone must text the project's iMessage number once. `DEMO_PHONE` maps your real 
 (`DEMO_LINE_ID`). Endpoints: `GET /api/photon/status`, `GET /api/photon/outbox`, `POST /api/photon/send`.
 Verified 2026-11-08: inbound "Hi" bound the phone and got the help reply; a fraud call on Rosa's line
 delivered a real guardian alert to the bound phone.
+
+## Protect / Train / Adapt
+
+ScamShield is framed as one learning system, not a list of features.
+
+- **Protect**: caller ID, Scam Block, the Call Screener, in-call fraud alerts, and **repeat-caller voice alerts**. Scammers can change numbers; changing their voice is harder.
+- **Train (Scam Academy, `drill.html`)**: opt-in, AI-written practice scams over iMessage with difficulty levels, a gentle mode, a Scam Survival Score, and shareable challenges.
+- **Adapt**: what Protect sees (voices reused across numbers, tactics in judged calls) feeds `GET /api/insights`, which recommends the Academy lesson to practice and shows a "Threats we're seeing" card.
+
+### The demo story (about 2 minutes)
+
+1. `POST /api/demo/story/reset` (or the **Reset story** button) clears learned voices and turns the protections on for every line.
+2. **Call 1**: a brand-new scammer voice calls Anne from (214) 555-0198. The voice is unknown, Gemini flags the fraud, and the voiceprint is stored as a *pending* profile (1 report).
+3. **Call 2**: the same voice calls Rosa from a different number, (469) 555-0231. The app shows **Possible repeat caller**, the earlier number, and a "Why we flagged this" breakdown (risk fusion).
+4. After either call, **Practice this scam** opens the matching Academy challenge.
+
+Voice matching is a hint, never proof. Nothing is blocked on voice alone, profiles need a second report to be confirmed, and customers can dispute a match ("Not a scam?"). Only voiceprints (256 numbers) and phone numbers are kept, never audio.
+
+### Voice pipeline
+
+- Speaker model: WeSpeaker ResNet34 from `voice/` (`npm run models` there). Voiceprints live in Postgres (`scammer_profiles`, `voiceprints`, `scammer_numbers`, `voice_matches`).
+- `npm --prefix server run seed:voices` loads `server/seed/voiceprints.json`; `voice/scripts/export-voiceprints.mjs` and `export-story.mjs` regenerate the seed files.
+- Simulated calls replay a stored voice sample. Real inbound calls turn Twilio's 8 kHz audio into voiceprints (`server/src/voiceaudio.js`). Test that path without a phone call: `node server/scripts/fake-scam-call.mjs 2145550198 st6 line_0 0`.
+- **Known limit**: synthetic voices that sound alike are hard to tell apart with this model (some unenrolled text-to-speech voices score above the 0.70 threshold). Calibrate with consented recordings of real people before trusting the threshold.
+
+### Safety rules for real calls and drills
+
+- Real outbound calls are off unless `TWILIO_ALLOW_OUTBOUND=true` in `server/.env`.
+- Drills require explicit consent, only reach a phone that texted the ScamShield line first, stop on `STOP`, always send a debrief, and are capped per phone and per day.
+- Not legal review: real deployment would need recording and biometric consent, retention limits, and a compliance review.

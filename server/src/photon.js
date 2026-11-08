@@ -19,6 +19,28 @@ export const photonEnabled = () => !!app;
 export const photonStatus = () => ({ ...status, projectId: PROJECT_ID ? PROJECT_ID.slice(0, 8) + '…' : null, demoPhone: DEMO_PHONE ? pretty(DEMO_PHONE) : null, outbox: outbox.length });
 export const getOutbox = () => outbox;
 
+/**
+ * Other features (the scam drill) can claim inbound texts before the default ScamShield bot answers.
+ * An interceptor gets { handle, text, space, message, reply(text) } and returns true when it handled the message.
+ */
+const interceptors = [];
+export const onInbound = fn => { interceptors.push(fn); };
+
+/** Send a text to any phone over iMessage (a shared line can only reach people who already texted it). */
+export async function sendToHandle(handle, text, meta = {}) {
+  const to = e164(handle);
+  const entry = { at: new Date().toISOString(), lineId: null, to: to ? pretty(to) : null, text, kind: meta.kind || 'message', delivered: false };
+  outbox.unshift(entry); outbox.length = Math.min(outbox.length, 50);
+  if (!app) { entry.reason = 'photon not connected'; return entry; }
+  if (!to) { entry.reason = 'invalid phone number'; return entry; }
+  try {
+    const space = await im.space.create(await im.user(to));
+    await space.send(textFn(text));
+    entry.delivered = true;
+  } catch (e) { entry.reason = e.message; console.warn('[photon] send failed:', e.message); }
+  return entry;
+}
+
 /** Connect to Photon and start consuming inbound messages. Safe to call when credentials are missing. */
 export async function startPhoton() {
   if (!PROJECT_ID || !SECRET) return;
@@ -68,7 +90,7 @@ export async function sendToLine(lineId, text, meta = {}) {
     const space = await im.space.create(user);
     await space.send(textFn(text));
     entry.delivered = true; entry.spaceId = space.id;
-    if (line && space.id) q('UPDATE lines SET photon_space_id = $2 WHERE id = $1', [line.id, space.id]).catch(() => {});
+    if (line && space.id) q('UPDATE lines SET photon_space_id = $2 WHERE id = $1', [line.id, space.id]).catch(() => { });
   } catch (e) { entry.reason = e.message; console.warn('[photon] send failed:', e.message); }
   return entry;
 }
@@ -79,8 +101,14 @@ export async function handleInbound(space, message) {
   if (seen.has(message.id)) return; seen.add(message.id);
   const text = message.content.text || '';
   const fromHandle = message.sender?.id || '';
+  for (const fn of interceptors) {
+    try {
+      const reply = async t => { await message.reply(textFn(t)); };
+      if (await fn({ handle: e164(fromHandle) || fromHandle, text, space, message, reply })) return;
+    } catch (e) { console.error('[photon] interceptor error:', e.message); }
+  }
   const line = await lineForHandle(fromHandle);
-  if (line && space?.id) q('UPDATE lines SET photon_space_id = $2 WHERE id = $1', [line.id, space.id]).catch(() => {});
+  if (line && space?.id) q('UPDATE lines SET photon_space_id = $2 WHERE id = $1', [line.id, space.id]).catch(() => { });
   console.log('[photon] inbound from', pretty(e164(fromHandle) || fromHandle), '->', line?.id || 'unknown line', ':', text.slice(0, 80));
 
   const num = e164(text.match(/\+?1?\D*(\d{3})\D*(\d{3})\D*(\d{4})/)?.[0]);

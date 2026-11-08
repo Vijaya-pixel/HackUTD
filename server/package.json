@@ -8,6 +8,7 @@
     "start": "node src/index.js",
     "migrate": "node src/migrate.js",
     "seed": "node src/seed.js",
+    "seed:voices": "node src/seed-voices.js",
     "check-llm": "node src/check-llm.js",
     "tunnel-setup": "node scripts/tunnel-setup.mjs",
     "fake-media": "node scripts/fake-media.mjs"

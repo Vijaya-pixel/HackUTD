@@ -4,6 +4,7 @@ import 'dotenv/config';
 import twilio from 'twilio';
 import { WebSocketServer } from 'ws';
 import { openStt, sttEnabled } from './stt.js';
+import { CallVoiceSampler, voiceAudioAvailable } from './voiceaudio.js';
 import { e164, pretty } from './db.js';
 
 const SID = process.env.TWILIO_ACCOUNT_SID || '', TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
@@ -136,6 +137,8 @@ export function registerTwilio(app, deps) {
   // Place a real call from the ScamShield number to a (trial: verified) phone. The judge's phone rings;
   // the UI shows it as an incoming call from the scam number on the chosen line.
   app.post('/api/calls/outbound', async c => {
+    // Real outbound calls are OFF unless TWILIO_ALLOW_OUTBOUND=true, so nothing can ring a phone by accident.
+    if (process.env.TWILIO_ALLOW_OUTBOUND !== 'true') return c.json({ error: 'Real outbound calls are disabled. Use the simulated calls in the app, or set TWILIO_ALLOW_OUTBOUND=true to enable.' }, 403);
     if (!twilioEnabled()) return c.json({ error: 'Twilio is not configured' }, 400);
     const { to, lineId = LINE_ID, scenario = 'fraud' } = await c.req.json();
     const dest = e164(to);
@@ -147,8 +150,10 @@ export function registerTwilio(app, deps) {
     deps.publish('call', { phase: 'ringing', id: r.id, lineId, num: pretty(displayNum), e164: displayNum, label: r.decision.label, loc: 'Twilio · calling ' + pretty(dest), risk: r.decision.risk, callerId: true, scenario, remote: true });
     try {
       const url = abs(`/webhooks/twilio/voice?mode=outbound&callId=${r.id}&step=0`);
-      const full = { to: dest, from: OUT_FROM, url, method: 'POST', timeLimit: MAX_CALL_SECONDS,
-        statusCallback: abs('/webhooks/twilio/status'), statusCallbackMethod: 'POST', statusCallbackEvent: ['answered', 'completed'] };
+      const full = {
+        to: dest, from: OUT_FROM, url, method: 'POST', timeLimit: MAX_CALL_SECONDS,
+        statusCallback: abs('/webhooks/twilio/status'), statusCallbackMethod: 'POST', statusCallbackEvent: ['answered', 'completed']
+      };
       let tc, trial = false;
       const place = async (from, minimal) => client.calls.create(minimal ? { to: dest, from, url } : { ...full, from });
       try { tc = await place(OUT_FROM, false); }
@@ -196,21 +201,38 @@ export const forwardTarget = () => FORWARD_TO;
 export function attachMediaServer(httpServer, deps) {
   const wss = new WebSocketServer({ server: httpServer, path: '/twilio/media' });
   wss.on('connection', ws => {
-    let stt = null, callId = null, mode = 'inbound', frames = 0;
+    let stt = null, sampler = null, callId = null, mode = 'inbound', frames = 0;
     ws.on('message', raw => {
       let m; try { m = JSON.parse(raw.toString()); } catch { return; }
       if (m.event === 'start') {
         callId = m.start?.customParameters?.callId; mode = m.start?.customParameters?.mode || 'inbound';
         console.log('[media] start', callId, mode, 'tracks:', m.start?.tracks, 'format:', JSON.stringify(m.start?.mediaFormat));
         if (!callId || !deps.live.has(callId)) { ws.close(); return; }
-        if (!sttEnabled()) { console.warn('media stream without DEEPGRAM_API_KEY; audio ignored'); return; }
-        stt = openStt({ tag: ':' + callId.slice(0, 8), onUtterance: text => {
-          const who = mode === 'outbound' ? 'you' : 'caller';
-          deps.addTranscript(callId, text, who).catch(console.error);
-        } });
+        // Voiceprints come from INBOUND calls only: there the stream carries the caller (the possible scammer),
+        // while the Call Screener talks to them. On outbound demo calls the stream is the person who answered.
+        if (mode === 'inbound' && voiceAudioAvailable()) {
+          deps.live.get(callId).audio = true;
+          sampler = new CallVoiceSampler({
+            seconds: 3, max: 3, onEmbedding: async (embedding, secs) => {
+              const call = deps.live.get(callId); if (!call) return;
+              const r = await deps.checkVoice(call, embedding);
+              console.log(`[voice] ${secs.toFixed(1)}s of caller speech -> ${r?.matched ? `match ${r.profile.name} ${r.similarity}` : `no match (${r?.similarity ?? r?.skipped ?? '-'})`}`);
+            }
+          });
+        }
+        if (!sttEnabled()) { console.warn('media stream without DEEPGRAM_API_KEY; transcript off'); return; }
+        stt = openStt({
+          tag: ':' + callId.slice(0, 8), onUtterance: text => {
+            const who = mode === 'outbound' ? 'you' : 'caller';
+            deps.addTranscript(callId, text, who).catch(console.error);
+          }
+        });
         deps.live.get(callId).stt = stt;
-      } else if (m.event === 'media' && stt) {
-        frames++; stt.send(Buffer.from(m.media.payload, 'base64'));
+      } else if (m.event === 'media' && (stt || sampler)) {
+        frames++;
+        const audio = Buffer.from(m.media.payload, 'base64');
+        if (stt) stt.send(audio);
+        if (sampler) sampler.push(audio);
       } else if (m.event === 'stop') {
         if (stt) { console.log('[media] stop', callId, stt.stats()); stt.close(); }
         ws.close();

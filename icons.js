@@ -26,6 +26,7 @@ const I = (() => {
     userPlus: w('<circle cx="10" cy="8" r="4"/><path d="M2.5 20a7.5 7.5 0 0 1 15 0"/><path d="M19 8v6M16 11h6"/>'),
     list: w('<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r=".8" fill="currentColor"/><circle cx="4" cy="12" r=".8" fill="currentColor"/><circle cx="4" cy="18" r=".8" fill="currentColor"/>'),
     voicemail: w('<circle cx="6.5" cy="12" r="3.5"/><circle cx="17.5" cy="12" r="3.5"/><path d="M6.5 15.5h11"/>'),
+    waveform: w('<path d="M3 12h1.5M7.5 8v8M12 4v16M16.5 8v8M19.5 12H21"/>'),
     mic: w('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/>'),
     sparkles: w('<path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><path d="m12 7 1.8 3.2L17 12l-3.2 1.8L12 17l-1.8-3.2L7 12l3.2-1.8z"/><path d="M5 5l1 1M18 18l1 1"/>'),
     alert: w('<path d="M12 3 2.5 20h19L12 3z"/><path d="M12 10v4.5"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>'),

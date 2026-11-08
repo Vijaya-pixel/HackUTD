@@ -9,7 +9,7 @@ let S = Object.assign({ tab: 'home', stack: [], line: 0, filter: 'all' }, loadPr
   sheet: null, toast: null, call: null, lookupQ: '', lookupRes: null, reason: null, addNum: '', reportText: '',
 });
 function loadPrefs() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
-function save() { try { localStorage.setItem(KEY, JSON.stringify({ tab: S.tab, stack: S.stack, line: S.line, filter: S.filter })); } catch {} }
+function save() { try { localStorage.setItem(KEY, JSON.stringify({ tab: S.tab, stack: S.stack, line: S.line, filter: S.filter })); } catch { } }
 
 /* ---------- helpers ---------- */
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -26,13 +26,13 @@ const riskLabel = r => r >= 80 ? 'High risk' : r >= 45 ? 'Medium risk' : 'Low ri
 const riskCls = r => r >= 80 ? 'red' : r >= 45 ? 'amber' : 'green';
 const stats = () => S.stats;
 const TYPE = {
-  blocked:    { icon: 'phoneOff',    cls: 'red',     label: 'Blocked' },
-  scam:       { icon: 'alert',       cls: 'magenta', label: 'Scam Likely · rang' },
-  spam:       { icon: 'voicemail',   cls: 'amber',   label: 'To voicemail' },
-  identified: { icon: 'phoneIn',     cls: 'green',   label: 'Identified' },
-  screened:   { icon: 'headset',     cls: 'blue',    label: 'Screened' },
-  ai:         { icon: 'sparkles',    cls: 'amber',   label: 'AI voice detected' },
-  fraud:      { icon: 'shieldAlert', cls: 'red',     label: 'Fraud · call ended' },
+  blocked: { icon: 'phoneOff', cls: 'red', label: 'Blocked' },
+  scam: { icon: 'alert', cls: 'magenta', label: 'Scam Likely · rang' },
+  spam: { icon: 'voicemail', cls: 'amber', label: 'To voicemail' },
+  identified: { icon: 'phoneIn', cls: 'green', label: 'Identified' },
+  screened: { icon: 'headset', cls: 'blue', label: 'Screened' },
+  ai: { icon: 'sparkles', cls: 'amber', label: 'AI voice detected' },
+  fraud: { icon: 'shieldAlert', cls: 'red', label: 'Fraud · call ended' },
 };
 const FILTERS = [['all', 'All'], ['blocked', 'Blocked'], ['scam', 'Scam Likely'], ['spam', 'Spam'], ['identified', 'Identified'], ['screened', 'Screened']];
 function matchesFilter(a) {
@@ -70,6 +70,20 @@ function applyLists(lists) {
   S.allowed = lists.filter(x => x.kind === 'allow').map(x => ({ num: x.num, name: x.label, when: x.label === 'Mom' ? 'From contacts' : when(x.created_at) }));
 }
 async function refreshLists() { applyLists(await api.get(`/lines/${curLine().lineId}/lists`)); render(); }
+/* ADAPT: what ScamShield learned across all customers, turned into a lesson. */
+async function loadInsights() { try { S.insights = await api.get('/insights'); render(); } catch { /* optional */ } }
+function insightsCard() {
+  const n = S.insights; if (!n) return '';
+  const v = n.voices.filter(x => x.numbers > 1);
+  const rows = [
+    v.length ? `<div class="feat">${ico('waveform')}<span><b>${v.length} scam voice${v.length === 1 ? '' : 's'}</b> used more than one number. Top: ${esc(v[0].name)}, ${v[0].numbers} numbers, ${v[0].reports} report${v[0].reports === 1 ? '' : 's'}.</span></div>` : '',
+    ...n.tactics.slice(0, 2).map(t => `<div class="feat">${ico('alert')}<span><b>${esc(t.label)}</b> in ${t.calls} call${t.calls === 1 ? '' : 's'} this week.</span></div>`),
+  ].filter(Boolean).join('');
+  if (!rows) return '';
+  const r = n.recommended;
+  return `<div class="card"><div class="eyebrow">Adapt · what ScamShield learned</div><div class="big" style="font-size:19px">Threats we're seeing</div>${rows}
+    ${r ? `<div class="btn-row"><a class="btn black" href="drill.html?c=${encodeURIComponent(r.id)}">${ico('sparkles')} Practice: ${esc(r.title)}</a></div><p class="note">${esc(r.because)}.</p>` : ''}</div>`;
+}
 async function refreshStats() { S.stats = await api.get(`/lines/${curLine().lineId}/stats`); S.allStats[S.line] = S.stats; render(); }
 const fail = e => toast(e.message || 'Something went wrong');
 
@@ -228,7 +242,13 @@ function scamshieldScreen() {
   ${filterChips()}
   <div class="card flush">${acts.length ? acts.map(actRow).join('') : emptyHtml('Nothing here yet')}</div>
   <div class="card"><div class="eyebrow">Try it</div><div class="big" style="font-size:19px">See ScamShield in action</div><p class="desc">Simulate an incoming call on ${esc(L.device)}.</p>
-    <div class="pill-demo"><button class="btn black" data-act="call" data-val="scam">${ico('phoneOff')} Scam Likely call</button><button class="btn outline" data-act="call" data-val="fraud">${ico('sparkles')} AI voice scam</button><button class="btn outline" data-act="call" data-val="screener">${ico('headset')} Screen a call</button></div></div>
+    <div class="pill-demo"><button class="btn black" data-act="call" data-val="scam">${ico('phoneOff')} Scam Likely call</button><button class="btn outline" data-act="call" data-val="fraud">${ico('sparkles')} AI voice scam</button><button class="btn outline" data-act="call" data-val="screener">${ico('headset')} Screen a call</button><button class="btn outline" data-act="call" data-val="voice">${ico('waveform')} Known scam voice</button></div></div>
+  <div class="card"><div class="eyebrow">Protect · demo story</div><div class="big" style="font-size:19px">Same voice, new number</div><p class="desc">A scammer calls Anne. ScamShield has never heard this voice, so it learns it. Then the same voice calls Rosa from a different number, and ScamShield recognizes it.</p>
+    <div class="pill-demo"><button class="btn black" data-act="story" data-val="story1:line_0">${ico('phoneIn')} 1 · Scammer calls Anne</button><button class="btn primary" data-act="story" data-val="story2:line_2">${ico('waveform')} 2 · New number calls Rosa</button><button class="btn ghost" data-act="storyReset">Reset story</button></div>
+    <a class="btn outline" href="caller.html" style="margin-top:10px">${ico('mic')} Be the scammer: call from your browser</a>
+    <p class="note">Answer each call. Call 1 takes about 10 seconds to be judged a scam; end it, then place call 2.</p></div>
+  ${insightsCard()}
+  <a class="card" href="drill.html" style="display:block"><div class="head"><div class="ico" style="background:var(--ink)">${ico('message')}</div><div class="big" style="font-size:18px">Scam Academy</div></div><p class="desc">Take the Scam Survival Challenge: we text you a realistic fake scam, then score how you did and show you the red flags. Opt-in. Prototype.</p></a>
   ${S.premium ? '' : premiumCard()}
   <button class="card" data-act="go" data-val="family" style="width:100%"><div class="head"><div class="ico" style="background:var(--blue)">${ico('users')}</div><div class="big" style="font-size:18px">Protect your whole family</div></div>
     <p class="desc">Set up Scam Block and Caller ID for every line on your account in under two minutes. Calls with people they know are never analyzed.</p><div class="cta"><span>Manage family protection</span>${ico('chevR')}</div></button>
@@ -363,7 +383,7 @@ const REASONS = ['Scam or fraud', 'Telemarketing', 'Robocall', 'Political', 'Sur
 function reportSheet(num) {
   return `<div class="title">Report a number</div><div class="sub">Reports from T-Mobile customers train ScamShield for everyone.</div>
     ${num ? `<div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px"><div class="ico" style="width:36px;height:36px;border-radius:10px;background:var(--magenta-tint);color:var(--magenta);display:flex;align-items:center;justify-content:center">${ico('flag')}</div><b>${esc(num)}</b></div>`
-          : `<div class="field">${ico('phone')}<input type="tel" placeholder="Phone number to report" data-bind="addNum" value="${esc(S.addNum || '')}"></div>`}
+      : `<div class="field">${ico('phone')}<input type="tel" placeholder="Phone number to report" data-bind="addNum" value="${esc(S.addNum || '')}"></div>`}
     ${REASONS.map(r => `<button class="radio ${S.reason === r ? 'on' : ''}" data-act="reason" data-val="${r}"><span class="r"></span>${r}</button>`).join('')}
     <textarea class="area" placeholder="What did they say? (optional)" data-bind="reportText">${esc(S.reportText || '')}</textarea>
     <div class="btn-row"><button class="btn primary" data-act="submitReport" data-val="${esc(num || '')}">Submit report</button></div>`;
@@ -391,9 +411,9 @@ function onCallEvent(ev) {
   if (ev.remote && S.call) S.call.remote = true;
   if (!S.call || (ev.id && S.call.id !== ev.id)) { renderOverlay(); return; }
   if (ev.phase === 'transcript') S.call.transcript.push({ who: ev.who, text: ev.text });
-  if (ev.phase === 'alert') S.call.alerts.push({ kind: ev.kind, title: ev.title, text: ev.text });
+  if (ev.phase === 'alert') S.call.alerts.push({ kind: ev.kind, title: ev.title, text: ev.text, pct: ev.pct, profile: ev.profile, replayed: ev.replayed, fusion: ev.fusion });
   if (ev.phase === 'connected') { S.call.phase = 'connected'; S.call.t = 0; startTimer(); }
-  if (ev.phase === 'ended') { S.call.phase = 'ended'; S.call.endedBy = ev.endedBy; S.call.outcome = ev.outcome; clearInterval(callTimer); }
+  if (ev.phase === 'ended') { S.call.phase = 'ended'; S.call.endedBy = ev.endedBy; S.call.outcome = ev.outcome; S.call.lesson = ev.lesson || null; clearInterval(callTimer); loadInsights(); }
   renderOverlay();
 }
 function callAction(a) {
@@ -408,19 +428,34 @@ function callAction(a) {
   else if (a === 'done') { S.call = null; clearInterval(callTimer); renderOverlay(); }
   else if (a === 'report') { const num = c.num; S.call = null; clearInterval(callTimer); renderOverlay(); openSheet('report', num); }
 }
+/* "This voice was recognized" card: the caller's voiceprint matched a reported scammer in the voice database. */
+function voiceCard(a) {
+  const p = a.profile || {}, pct = Math.max(0, Math.min(100, a.pct || 0)), n = p.reports || 1, f = a.fusion;
+  const numbers = (p.numbers || []).map(x => `<span class="badge">${esc(x)}</span>`).join('');
+  const why = f ? `<div class="vwhy"><div class="vlabel">Why we flagged this · <b>${esc(f.level)} risk (${f.score}/100)</b></div>${f.signals.map(s => `<div class="vsig">${ico('check')}<span><b>${esc(s.label)}.</b> ${esc(s.detail)}</span></div>`).join('')}</div>` : '';
+  return `<div class="alert voice"><div class="ah"><div class="i magenta">${ico('waveform')}</div>${esc(a.title)}${p.aiVoice ? '<span class="badge amber">AI voice</span>' : ''}</div>
+    <p>${esc(a.text)}</p>
+    <div class="vmeter" role="img" aria-label="${pct}% similar to previously reported scam audio"><span style="width:${pct}%"></span></div>
+    <div class="vmeta"><span>${pct}% similar</span><span>${n} report${n === 1 ? '' : 's'}${p.status === 'pending' ? ' · unconfirmed' : ''}</span></div>
+    ${numbers ? `<div class="vnums"><span class="vlabel">Also called from</span>${numbers}</div>` : ''}
+    ${why}
+    <p class="vnote">${a.replayed ? 'Demo call: a saved voice sample stands in for live audio. ' : ''}A voice match is a hint, not proof. We never block a call on voice alone.</p>
+    <div class="btn-row"><button class="btn outline" data-act="dispute" data-val="${esc(p.id || '')}">Not a scam?</button><button class="btn danger" data-act="callAct" data-val="end">End call</button></div>
+    <div class="brand">${ico('shieldCheck')} ScamShield voice database</div></div>`;
+}
 const fmtTime = t => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 function callHtml() {
   const c = S.call;
   const ctl = (cls, icon, label, act) => `<button class="ctl" data-act="callAct" data-val="${act}"><div class="c ${cls}">${ico(icon)}</div>${label}</button>`;
   const labelCls = /scam likely/i.test(c.label) ? '' : /spam/i.test(c.label) ? 'amber' : 'gray';
   const bubbles = c.transcript.map(l => `<div class="bubble ${l.who === 'ScamShield' || l.who === 'you' ? 'us' : 'them'}"><span class="by">${esc(l.who === 'ScamShield' ? 'ScamShield' : l.who === 'you' ? 'You' : 'Caller')}</span>${esc(l.text)}</div>`).join('');
-  const alerts = c.alerts.map(a => a.kind === 'fraud'
+  const alerts = c.alerts.map(a => a.kind === 'voiceprint' ? voiceCard(a) : a.kind === 'fraud'
     ? (c.dismissed ? '' : `<div class="alert danger"><div class="ah"><div class="i red">${ico('shieldAlert')}</div>${esc(a.title)}</div><p>${esc(a.text)} <b>Use extreme caution</b> or end the call now.</p><div class="btn-row"><button class="btn outline" data-act="callAct" data-val="dismiss">Dismiss warning</button><button class="btn danger" data-act="callAct" data-val="end">End call</button></div><div class="brand">${ico('shieldCheck')} ScamShield in-call protection</div></div>`)
     : `<div class="alert"><div class="ah"><div class="i amber">${ico('sparkles')}</div>${esc(a.title)}</div><p>${esc(a.text)}</p><div class="brand">${ico('shieldCheck')} ScamShield</div></div>`).join('');
   let body = '', controls = '', state = '';
   if (c.phase === 'ringing' && c.remote) { state = 'Real call via Twilio · waiting for pickup'; controls = ctl('red', 'phoneOff', 'Cancel', 'end'); }
   else if (c.phase === 'ringing') { state = 'T-Mobile · incoming call'; controls = ctl('red', 'phoneOff', 'Decline', 'decline') + ctl('green', 'phone', 'Accept', 'accept'); body = bubbles ? `<div class="transcript">${bubbles}</div>` : ''; }
-  if (c.phase === 'screening') { state = 'ScamShield is screening this call'; body = `<div class="transcript">${bubbles}</div>`; controls = ctl('red', 'phoneOff', 'Hang up', 'hangup') + ctl('green', 'phone', 'Take over', 'takeover'); }
+  if (c.phase === 'screening') { state = 'ScamShield is screening this call'; body = `<div class="transcript">${bubbles}</div>` + alerts; controls = ctl('red', 'phoneOff', 'Hang up', 'hangup') + ctl('green', 'phone', 'Take over', 'takeover'); }
   if (c.phase === 'connected') {
     state = `<span class="timer">${fmtTime(c.t)}</span>`;
     controls = ctl('gray', 'mic', 'Mute', 'noop') + ctl('red', 'phoneOff', 'End', 'end') + ctl('gray', 'voicemail', 'Speaker', 'noop');
@@ -430,7 +465,7 @@ function callHtml() {
     const byShield = c.endedBy === 'ScamShield';
     const msg = { fraud: 'This number was flagged as fraud and added to your activity. The verdict came from the live transcript.', screened: 'The caller would not identify themselves and was hung up on. Nothing rang on your phone.', scam: 'This Scam Likely call was logged. Turn on Scam Block to stop calls like this before they ring.', ai: 'A synthetic voice was detected on this call and it was logged.' }[c.outcome] || 'Call logged in your ScamShield activity.';
     body = `<div class="summary"><div class="orb">${ico(byShield ? 'shieldCheck' : 'phoneOff')}</div><h3>${byShield ? 'Call ended by ScamShield' : 'Call ended'}</h3><p>${msg}</p></div>`;
-    controls = `<div style="width:100%;display:flex;flex-direction:column;gap:10px"><button class="btn primary" data-act="callAct" data-val="report">${ico('flag')} Report this number</button><button class="btn outline-light" data-act="callAct" data-val="done">Done</button></div>`;
+    controls = `<div style="width:100%;display:flex;flex-direction:column;gap:10px">${c.lesson ? `<a class="btn white" href="drill.html?c=${encodeURIComponent(c.lesson.id)}">${ico('sparkles')} Practice this scam: ${esc(c.lesson.title)}</a>` : ''}<button class="btn primary" data-act="callAct" data-val="report">${ico('flag')} Report this number</button><button class="btn outline-light" data-act="callAct" data-val="done">Done</button></div>`;
   }
   return `<div class="call"><div class="top"><div class="label ${labelCls}">${ico(c.phase === 'screening' ? 'headset' : 'alert')} ${esc(c.label)}</div><div class="who">${esc(c.num)}</div><div class="where">${esc(c.loc || '')}${c.callerId ? ' · T-Mobile Caller ID' : ''}</div><div class="state">${state}</div></div><div class="body">${body}</div><div class="controls">${controls}</div></div>`;
 }
@@ -453,7 +488,7 @@ function render(resetScroll) {
   tabbar.classList.toggle('hidden', S.stack.length > 0);
   tabbar.innerHTML = TABS.map(([id, label, icon]) => `<button class="tab ${S.tab === id ? 'on' : ''}" data-act="tab" data-val="${id}">${ico(icon)}<span>${label}</span></button>`).join('');
   content.scrollTop = resetScroll ? 0 : top;
-  if (bind) { const el = content.querySelector(`[data-bind="${bind}"]`); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) {} } }
+  if (bind) { const el = content.querySelector(`[data-bind="${bind}"]`); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } }
   renderOverlay();
 }
 const last = { sheet: '', call: null, toast: '' };
@@ -480,7 +515,7 @@ function renderOverlay() {
   if (sh !== last.sheet) {
     const a = document.activeElement, b = a && a.dataset ? a.dataset.bind : null, p = a && a.selectionStart;
     sheetEl.innerHTML = sh; last.sheet = sh;
-    if (b) { const f = sheetEl.querySelector(`[data-bind="${b}"]`); if (f) { f.focus(); try { f.setSelectionRange(p, p); } catch (err) {} } }
+    if (b) { const f = sheetEl.querySelector(`[data-bind="${b}"]`); if (f) { f.focus(); try { f.setSelectionRange(p, p); } catch (err) { } } }
   }
   if (!S.call) { if (last.call !== null) { callEl.innerHTML = ''; last.call = null; } }
   else { const k = callKey(); if (k !== last.call) updateCall(callEl, k); else { const t = callEl.querySelector('.timer'); if (t) t.textContent = fmtTime(S.call.t); } }
@@ -509,6 +544,9 @@ document.addEventListener('click', e => {
     filter: () => { S.filter = v; save(); render(); },
     detail: () => openSheet('detail', v), sheet: () => openSheet(v, null), close: () => closeSheet(),
     call: () => startCall(v), callAct: () => callAction(v),
+    story: () => { const [scn, lineId] = v.split(':'); api.post('/calls/simulate', { lineId, scenario: scn }).catch(fail); },
+    storyReset: () => api.post('/demo/story/reset').then(r => toast(`Story reset. Forgot ${r.forgotten} learned voice${r.forgotten === 1 ? '' : 's'}.`)).catch(fail),
+    dispute: () => api.post(`/voices/${v}/dispute`).then(() => toast('Thanks. Your dispute was recorded and lowers trust in this voice match.')).catch(fail),
     block: () => api.post(`/lines/${L.lineId}/lists`, { kind: 'block', num: v }).then(() => { toast(`${v} blocked. Calls go to voicemail.`); return refreshLists(); }).catch(fail),
     unblock: () => api.del(`/lines/${L.lineId}/lists/block/${digits(v)}`).then(() => { toast(`${v} removed from block list`); return refreshLists(); }).catch(fail),
     allow: () => api.post(`/lines/${L.lineId}/lists`, { kind: 'allow', num: v }).then(() => { toast(`${v} will always ring through`); return refreshLists(); }).catch(fail),
@@ -529,10 +567,10 @@ document.addEventListener('click', e => {
     premiumRemove: () => api.post(`/accounts/${ACCOUNT}/premium`, { premium: false })
       .then(() => loadAll()).then(() => { closeSheet(); toast('ScamShield Premium removed'); render(); }).catch(fail),
     lookup: () => doLookup(S.lookupQ), lookupRecent: () => { S.lookupQ = v; doLookup(v); },
-    toast: () => toast(v), noop: () => {},
+    toast: () => toast(v), noop: () => { },
     reset: () => { localStorage.removeItem(KEY); location.reload(); },
   };
-  (A[act] || (() => {}))();
+  (A[act] || (() => { }))();
 });
 document.addEventListener('input', e => { const b = e.target.dataset && e.target.dataset.bind; if (!b) return; S[b] = e.target.value; if (b === 'lookupQ' && current() === 'activity') render(); });
 document.addEventListener('keydown', e => { if (e.key !== 'Enter') return; const a = e.target.dataset && e.target.dataset.enter; if (a) { e.preventDefault(); const btn = document.querySelector(`[data-act="${a}"]`); if (btn) btn.click(); } });
@@ -542,12 +580,13 @@ let es = null;
 async function boot() {
   S.error = null; render();
   try { await loadAll(); } catch (e) { S.error = e.message; render(); return; }
+  loadInsights();
   render(true);
   if (!es) es = api.events({
     call: onCallEvent,
     activity: a => { if (a.line !== curLine().lineId) return; S.activity = [a, ...S.activity.filter(x => x.id !== a.id && !(x.e164 === a.e164 && x.type === a.type))]; refreshStats().catch(() => render()); },
     line: l => { const L = LINES.find(x => x.lineId === l.id); if (L) { L.toggles = l.toggles; if (L === curLine()) { S.toggles = l.toggles; render(); } } },
-    lists: () => refreshLists().catch(() => {}),
+    lists: () => refreshLists().catch(() => { }),
   });
 }
 boot();
