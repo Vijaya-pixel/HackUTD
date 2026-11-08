@@ -762,3 +762,10 @@ textarea.area{width:100%;border:1px solid var(--line);border-radius:12px;padding
 .quest .avatar.travel{animation:travelhop .9s ease-in-out}
 @keyframes travelhop{0%,100%{margin-top:0}20%{margin-top:-22px}45%{margin-top:-6px}70%{margin-top:-18px}}
 .quest .nodecard.hint .big{font-size:20px}
+
+/* Home: one lifted white card over the hero, Tuesdays as a quiet row */
+.lift{margin-top:-44px;position:relative;z-index:2}
+.lift .card{border-color:transparent;box-shadow:0 8px 28px rgba(0,0,0,.10)}
+.hero-head.home{padding:54px 16px 62px}
+.hero-head.home .subhead{margin:-2px 0 0;font-size:16px}
+.hero-head.home .header{padding:4px 0 10px}

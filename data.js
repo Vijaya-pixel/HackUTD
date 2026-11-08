@@ -1,6 +1,6 @@
 // Demo data for ScamShield (T-Life feature extension)
 const LINES = [
-  { id: 0, name: "Anne", device: "Anne's iPhone 17 Pro", num: "(206) 555-0101", initials: "AR", primary: true },
+  { id: 0, name: "Harsh", device: "Harsh's iPhone 17 Pro", num: "(206) 555-0101", initials: "HR", primary: true },
   { id: 1, name: "Marco", device: "Marco's Galaxy S25", num: "(206) 555-0177", initials: "MR" },
   { id: 2, name: "Rosa", device: "Grandma Rosa's iPhone 15", num: "(425) 555-0133", initials: "RM" },
 ];

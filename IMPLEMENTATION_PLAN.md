@@ -195,7 +195,7 @@ supplies the `spaceId`, `senderId` and the message id you must reuse for every r
 
 Flows:
 
-- Guardian alert: when a high-risk call hits Rosa's line and `notify_guardian` is set, send Anne
+- Guardian alert: when a high-risk call hits Rosa's line and `notify_guardian` is set, send Harsh
   "ScamShield stopped a likely grandparent scam on Rosa's phone (866) 555-0176. She did not share any info."
 - Report by text: inbound "report 312-555-0107" or just a pasted number: look it up, insert a `reports` row with
   `source = 'photon'`, bump `numbers.reports_30d`, reply with risk, category and report count.
@@ -226,7 +226,7 @@ Two call shapes, both using Media Streams:
 A. Call Screener (inbound). A judge calls the Twilio number.
    - `/webhooks/twilio/voice` returns TwiML: `<Connect><Stream url="wss://<PUBLIC_URL>/twilio/media"/></Connect>`.
      Twilio opens the WebSocket and sends `start`, then `media` frames (base64 mulaw, 20 ms each).
-   - The server plays the screener prompt back on the same socket (TTS the line "Hi, I'm screening calls for Anne.
+   - The server plays the screener prompt back on the same socket (TTS the line "Hi, I'm screening calls for Harsh.
      May I ask who is calling?" to mulaw 8 kHz once at startup and cache the bytes).
    - Caller audio goes to Deepgram; each final transcript chunk is posted into the risk engine as a transcript
      event for the active call. The engine's verdict decides: sales pitch or scam tactic, play the goodbye line and
@@ -304,7 +304,7 @@ Stretch, only if ahead
 2. Tap "Scam Likely call" with Scam Block on: no ring, toast, new row, counter ticks. Show the row in TigerData.
 3. Switch to Rosa, then `POST /calls/outbound` to a judge's phone. Their phone actually rings from the ScamShield
    number; they answer and hear the bank-fraud script. On the big screen the transcript streams in, the Gemini
-   verdict lands, the Fraud card appears, you end the call from the UI, and Anne's phone gets the Photon guardian alert.
+   verdict lands, the Fraud card appears, you end the call from the UI, and Harsh's phone gets the Photon guardian alert.
 4. A second judge calls the ScamShield number and pretends to sell a warranty. The Call Screener asks who is
    calling, transcribes the answer, says goodbye and hangs up. The screened row appears in activity.
 5. Text an unknown number to the ScamShield line from a phone; the reply shows the verdict and the report count

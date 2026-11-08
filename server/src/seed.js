@@ -29,7 +29,7 @@ async function loadPrototypeData() {
 async function main() {
   const { LINES, ACTIVITY, CATEGORIES, LOOKUP_DB } = await loadPrototypeData();
   await tx(async c => {
-    await c.query(`INSERT INTO accounts (id, name, plan, premium) VALUES ('acct_anne','Anne Rivera','Experience More',false)
+    await c.query(`INSERT INTO accounts (id, name, plan, premium) VALUES ('acct_anne','Harsh Rivera','Experience More',false)
                    ON CONFLICT (id) DO NOTHING`);
     for (const l of LINES) {
       await c.query(`INSERT INTO lines (id, account_id, name, device, msisdn, initials, is_primary, notify_guardian)

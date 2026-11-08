@@ -126,11 +126,11 @@ function homeScreen() {
   return `
   <div class="hero-head home">
     <div class="brandbar"><span class="tmark">${ico('tmo')}</span><span class="tlife">T Life</span></div>
-    ${header('Hey, Anne', { brand: true, icons: [['chat', 'toast', 'Messages are not part of this demo'], ['bell', 'toast', 'No new notifications']] })}
+    ${header('Hey, Harsh', { brand: true, icons: [['chat', 'toast', 'Messages are not part of this demo'], ['bell', 'toast', 'No new notifications']] })}
     <p class="subhead">See what's new in T Life today</p>
   </div>
-  <button class="card magenta tuesdays lift" data-act="tab" data-val="benefits" style="width:100%"><div class="between"><div><div class="eyebrow">T-Mobile Tuesdays</div><div class="big">This week's thanks</div><p class="desc">Free 7-Eleven coffee, 15¢ off gas at Shell and $5 off Little Caesars.</p></div><div class="tico">${ico('gift')}</div></div></button>
-  ${balanceCard()}
+  <div class="lift">${balanceCard()}</div>
+  <div class="card flush">${row({ icon: 'gift', title: 'T-Mobile Tuesdays', sub: "This week: free 7-Eleven coffee, 15¢ off gas at Shell, $5 off Little Caesars", act: 'tab', val: 'benefits', wrap: true })}</div>
   <h2 class="section">Quick actions</h2>
   <div class="tiles">${tile('dollar', 'Pay bill', 'toast', 'Payments are not part of this demo')}${tile('shield', 'ScamShield', 'go', 'scamshield')}${tile('paw', 'Train with Buddy', 'tab', 'learn')}${tile('upgrade', 'Upgrade', 'toast', 'Shopping is not part of this demo')}${tile('headset', 'Support', 'toast', 'Support chat is not part of this demo')}</div>
   <h2 class="section">More for you</h2>
@@ -199,7 +199,7 @@ function accountScreen() {
   <h2 class="section">Settings</h2>
   <div class="card flush">
     ${row({ icon: 'shield', title: 'ScamShield Premium', sub: S.premium ? 'Active · $4.00/mo per line' : 'Not added', act: 'sheet', val: 'premium' })}
-    ${row({ icon: 'user', title: 'Caller ID name', sub: 'Anne Rivera', act: 'toast', val: 'Caller ID name changes are not part of this demo' })}
+    ${row({ icon: 'user', title: 'Caller ID name', sub: 'Harsh Rivera', act: 'toast', val: 'Caller ID name changes are not part of this demo' })}
     ${row({ icon: 'lock', title: 'Privacy & security', act: 'toast', val: na })}
     ${row({ icon: 'bell', title: 'Notifications', act: 'go', val: 'ss-settings' })}
   </div>
@@ -334,7 +334,7 @@ function settingsScreen() {
     ${toggleRow('weekly', 'bell', 'amber', 'Weekly protection summary', 'A Monday recap of what ScamShield stopped')}
   </div>
   <div class="card flush">
-    ${row({ icon: 'user', cls: '', title: 'Caller ID name', sub: 'Anne Rivera', act: 'toast', val: 'Caller ID name changes are not part of this demo' })}
+    ${row({ icon: 'user', cls: '', title: 'Caller ID name', sub: 'Harsh Rivera', act: 'toast', val: 'Caller ID name changes are not part of this demo' })}
     ${row({ icon: 'shield', cls: '', title: 'ScamShield Premium', sub: S.premium ? 'Active · $4.00/mo per line' : 'Not added', act: 'sheet', val: 'premium' })}
     ${row({ icon: 'info', cls: '', title: 'How ScamShield works', sub: 'Network data, call behavior and reports from 100M+ customers', act: 'toast', val: 'Learn more is not part of this demo' })}
     ${row({ icon: 'globe', cls: '', title: 'Backend', sub: `${esc(api.base)} · live data from TigerData`, chev: false })}
@@ -591,7 +591,7 @@ function render(resetScroll) {
   if (!S.ready) {
     content.innerHTML = S.error
       ? `<div class="header"><div class="h1">ScamShield</div></div><div class="card"><div class="big" style="font-size:18px">Cannot reach the backend</div><p class="desc">${esc(S.error)}</p><p class="desc">Start it with <code>npm --prefix server start</code> and open <code>http://localhost:8787</code>.</p><div class="btn-row"><button class="btn primary" data-act="retry">Retry</button></div></div>`
-      : `<div class="header"><div class="h1 brand">Hey, Anne</div></div><div class="card"><p class="desc">Loading your lines from TigerData…</p></div>`;
+      : `<div class="header"><div class="h1 brand">Hey, Harsh</div></div><div class="card"><p class="desc">Loading your lines from TigerData…</p></div>`;
     tabbar.classList.add('hidden'); return;
   }
   const scr = current(); const top = content.scrollTop; const active = document.activeElement; const bind = active && active.dataset ? active.dataset.bind : null; const pos = active && active.selectionStart;

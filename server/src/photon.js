@@ -8,7 +8,7 @@ import { draftReply } from './llm.js';
 
 const PROJECT_ID = process.env.PHOTON_PROJECT_ID || '';
 const SECRET = process.env.PHOTON_PROJECT_SECRET || process.env.PHOTON_API_KEY || '';
-const DEMO_PHONE = e164(process.env.DEMO_PHONE || '') || null;   // the real phone that stands in for Anne's line in demos
+const DEMO_PHONE = e164(process.env.DEMO_PHONE || '') || null;   // the real phone that stands in for Harsh's line in demos
 const DEMO_LINE = process.env.DEMO_LINE_ID || 'line_0';
 
 let app = null, im = null, textFn = null, status = { state: 'off', detail: 'PHOTON_PROJECT_ID / PHOTON_PROJECT_SECRET not set' };

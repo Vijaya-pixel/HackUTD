@@ -111,7 +111,7 @@ Photon's stable product (Spectrum) is used through the `spectrum-ts` SDK. Creden
 `PHOTON_PROJECT_ID` and `PHOTON_PROJECT_SECRET` (the dashboard's Project Secret; there is no separate API key).
 The server keeps a live SDK connection: inbound texts arrive on the stream (no webhook), and replies and
 guardian alerts are sent on it. Shared lines can only message a phone that has texted them first, so each demo
-phone must text the project's iMessage number once. `DEMO_PHONE` maps your real phone to Anne's line
+phone must text the project's iMessage number once. `DEMO_PHONE` maps your real phone to Harsh's line
 (`DEMO_LINE_ID`). Endpoints: `GET /api/photon/status`, `GET /api/photon/outbox`, `POST /api/photon/send`.
 Verified 2026-11-08: inbound "Hi" bound the phone and got the help reply; a fraud call on Rosa's line
 delivered a real guardian alert to the bound phone.
