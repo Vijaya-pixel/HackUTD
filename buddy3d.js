@@ -1,5 +1,4 @@
-/* SafeT Buddy v3, the 3D mascot, ported one to one from the React Three Fiber component (BuddyMascot3D.tsx v3)
-   to plain three.js so it runs in this no-build app. Round peach body, two-tone cap with a projecting brim and the
+/* SafeT Buddy, the 3D mascot, built with plain three.js so it runs in this no-build app. Round peach body, two-tone cap with a projecting brim and the
    T logo on the front panel, round headphones, antenna, hands, magenta shoes, glossy eyes, open mouths, brows,
    per-expression effects (sweat drop, action lines, "!!", sparkle, Zzz, confetti) and per-expression motion with
    damping and a squash-stretch pop on every expression change.

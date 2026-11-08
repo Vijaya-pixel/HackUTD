@@ -1,4 +1,4 @@
-// Safe Signal practice engine (Learn tab). Ported from the Education_feature branch onto this server:
+// Safe Signal practice engine (Learn tab):
 // scenarios -> staged scammer conversation (Gemini, scripted fallback) -> reveal -> lesson.
 // Channels: 'simulator' (in-app chat over SSE) and 'imessage' (Photon shared line).
 import { readdirSync, readFileSync } from 'node:fs';
@@ -21,7 +21,7 @@ const scenario = id => SCENARIOS.find(s => s.id === id) || null;
 const CATEGORY_LABEL = { package_delivery: 'Package delivery', toll_fee: 'Toll notice', job_offer: 'Job offer', family_emergency: 'Family emergency', bank_alert: 'Bank alert', tmobile_account: 'Mobile account' };
 const FLAG_LABEL = { urgency: 'Urgency', impersonation: 'Impersonation', secrecy: 'Secrecy', unusual_payment_or_code: 'Payment or code request', suspicious_link_or_sender: 'Suspicious link or sender', too_good_to_be_true: 'Too good to be true' };
 
-/* ---------- detection rules (verbatim weights from the branch) ---------- */
+/* ---------- detection rules ---------- */
 const RULES = [
   ['urgency', /\b(within\s+\d+\s*(hour|hr|minute|min)s?|expires?\s+in|act\s+now|immediately|right\s+now|urgent|asap|time\s+is\s+running\s+out|limited\s+time|today\s+only|before\s+midnight|final\s+notice|last\s+chance)\b/gi, 'Artificial time pressure designed to prevent careful thinking', 0.35],
   ['urgency', /\b(suspend|suspended|suspension|revoke|terminated|disabled|blocked|frozen|locked)\b/gi, 'Threat of account action to trigger panic', 0.4],

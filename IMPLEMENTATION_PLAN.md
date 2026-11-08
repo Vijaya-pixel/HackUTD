@@ -3,7 +3,7 @@
 Goal: turn the clickable prototype in this folder into a working system in roughly 24 to 36 hours, using
 TigerData for the database and Photon for messaging, with the T-Life UI you already have as the front end.
 
-Verified facts this plan relies on (checked 2026-11-08 against the vendors' docs):
+Platform notes:
 
 - TigerData free plan: two free services per account, shared CPU/memory, region `us-east-1` only, goes
   read-only at the storage cap. Hypertables, continuous aggregates, retention policies, pgvector,
@@ -22,7 +22,6 @@ Verified facts this plan relies on (checked 2026-11-08 against the vendors' docs
 - Twilio Programmable Voice (Node SDK `twilio`): a local US number is about $1.15/month, voice is roughly
   $0.014/min inbound and outbound, Media Streams (raw call audio over WebSocket) has no extra charge. A trial
   account can only call verified numbers and plays a preamble, so load $20 and upgrade before the event.
-  Verify current prices on twilio.com/pricing when you sign up.
 
 ## 1. What is real vs. simulated
 
