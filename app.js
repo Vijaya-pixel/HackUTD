@@ -32,6 +32,8 @@ const TYPE = {
   spam:       { icon: 'voicemail',   cls: 'amber',   label: 'To voicemail' },
   identified: { icon: 'phoneIn',     cls: 'green',   label: 'Identified' },
   screened:   { icon: 'headset',     cls: 'blue',    label: 'Screened' },
+  forwarded:  { icon: 'phoneIn',     cls: 'green',   label: 'Screened · answered' },
+  missed:     { icon: 'headset',     cls: 'amber',   label: 'Screened · not answered' },
   ai:         { icon: 'sparkles',    cls: 'amber',   label: 'AI voice detected' },
   fraud:      { icon: 'shieldAlert', cls: 'red',     label: 'Fraud · call ended' },
 };
@@ -400,11 +402,12 @@ function applySnapshot(snap) {
     const changed = c.phase !== snap.phase || c.transcript.length !== snap.transcript.length || c.alerts.length !== snap.alerts.length;
     if (!changed) return;
     c.phase = snap.phase; c.transcript = snap.transcript; c.alerts = snap.alerts; c.endedBy = snap.endedBy; c.outcome = snap.outcome; c.label = snap.label || c.label;
+    if (snap.summary) { c.summary = snap.summary; c.forwarded = true; c.risk = snap.risk; }
     if (snap.phase === 'connected') { c.t = snap.t; startTimer(); } else if (snap.phase === 'ended') clearInterval(callTimer);
   } else {
     if (c && c.phase !== 'ended' && c.id !== snap.id && snap.phase === 'ended') return; // keep a live call over an old ended one
     S.call = { id: snap.id, lineId: snap.lineId, scn: snap.scenario, num: snap.num, loc: snap.loc, label: snap.label, risk: snap.risk, callerId: snap.callerId, remote: snap.remote,
-      transcript: snap.transcript, alerts: snap.alerts, dismissed: false, t: snap.t, phase: snap.phase, endedBy: snap.endedBy, outcome: snap.outcome };
+      transcript: snap.transcript, alerts: snap.alerts, dismissed: false, t: snap.t, phase: snap.phase, endedBy: snap.endedBy, outcome: snap.outcome, summary: snap.summary || undefined, forwarded: snap.forwarded };
     if (snap.phase === 'connected') startTimer(); else clearInterval(callTimer);
   }
   renderOverlay();
@@ -415,6 +418,7 @@ function onCallEvent(ev) {
   if (ev.phase === 'ringing' || ev.phase === 'screening') {
     if (!S.call || S.call.id !== ev.id) S.call = { id: ev.id, lineId: ev.lineId, scn: ev.scenario, num: ev.num, loc: ev.loc, label: ev.label, risk: ev.risk, callerId: ev.callerId, transcript: [], alerts: [], dismissed: false, t: 0 };
     S.call.phase = ev.phase; S.call.label = ev.label || S.call.label; if (ev.loc) S.call.loc = ev.loc; if (ev.remote) S.call.remote = true;
+    if (ev.summary) { S.call.summary = ev.summary; S.call.forwarded = true; if (ev.risk != null) S.call.risk = ev.risk; }
   }
   if (ev.remote && S.call) S.call.remote = true;
   if (!S.call || (ev.id && S.call.id !== ev.id)) { renderOverlay(); return; }
@@ -437,6 +441,19 @@ function callAction(a) {
   else if (a === 'report') { doneCalls.add(c.id); const num = c.num; S.call = null; clearInterval(callTimer); renderOverlay(); openSheet('report', num); }
 }
 const fmtTime = t => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+/** Card shown while the subscriber's phone rings: what the caller told the screener and what ScamShield makes of it. */
+function screeningCard(c) {
+  const s = c.summary;
+  const cls = s.recommendation === 'decline' ? 'red' : s.recommendation === 'caution' ? 'amber' : 'green';
+  const rec = { answer: 'Looks okay to answer', caution: 'Answer with caution', decline: 'We recommend not answering' }[s.recommendation] || 'Use your judgment';
+  const kv = [['Caller', s.caller_name], ['Company', s.organization], ['Reason', s.purpose], ['Callback number', s.callback_offered ? 'Offered' : 'None given']]
+    .map(([k, v]) => `<div><span>${k}</span><b>${esc(v || 'Not given')}</b></div>`).join('');
+  const flags = (s.red_flags || []).map(f => `<span class="chip">${esc(f)}</span>`).join('');
+  return `<div class="alert screen"><div class="ah"><div class="i ${cls}">${ico('headset')}</div>Screening summary<span class="riskpill ${cls}">Risk ${s.risk}</span></div>
+    <div class="kv">${kv}</div><p>${esc(s.summary)}</p>${flags ? `<div class="chips">${flags}</div>` : ''}
+    <div class="rec ${cls}">${ico(s.recommendation === 'answer' ? 'checkCircle' : 'alert')} ${rec}</div>
+    <div class="brand">${ico('shieldCheck')} ScamShield asked the caller ${c.transcript.filter(l => l.who === 'ScamShield' && /\?$/.test(l.text)).length || 3} questions</div></div>`;
+}
 function callHtml() {
   const c = S.call;
   const ctl = (cls, icon, label, act) => `<button class="ctl" data-act="callAct" data-val="${act}"><div class="c ${cls}">${ico(icon)}</div>${label}</button>`;
@@ -446,7 +463,15 @@ function callHtml() {
     ? (c.dismissed ? '' : `<div class="alert danger"><div class="ah"><div class="i red">${ico('shieldAlert')}</div>${esc(a.title)}</div><p>${esc(a.text)} <b>Use extreme caution</b> or end the call now.</p><div class="btn-row"><button class="btn outline" data-act="callAct" data-val="dismiss">Dismiss warning</button><button class="btn danger" data-act="callAct" data-val="end">End call</button></div><div class="brand">${ico('shieldCheck')} ScamShield in-call protection</div></div>`)
     : `<div class="alert"><div class="ah"><div class="i amber">${ico('sparkles')}</div>${esc(a.title)}</div><p>${esc(a.text)}</p><div class="brand">${ico('shieldCheck')} ScamShield</div></div>`).join('');
   let body = '', controls = '', state = '';
-  if (c.phase === 'ringing' && c.remote) { state = 'Real call via Twilio · waiting for pickup'; controls = ctl('red', 'phoneOff', 'Cancel', 'end'); }
+  if (c.phase === 'ringing' && c.summary) {
+    // screener finished its interview and is ringing the subscriber: show the summary while they decide
+    state = c.remote ? 'Screened by ScamShield · ringing your phone' : 'Screened by ScamShield · incoming call';
+    body = screeningCard(c);
+    controls = c.remote
+      ? ctl('red', 'phoneOff', 'Decline', 'end') + `<div class="ctl"><div class="c green">${ico('phone')}</div>Answer on your phone</div>`
+      : ctl('red', 'phoneOff', 'Decline', 'decline') + ctl('green', 'phone', 'Accept', 'accept');
+  }
+  else if (c.phase === 'ringing' && c.remote) { state = 'Real call via Twilio · waiting for pickup'; controls = ctl('red', 'phoneOff', 'Cancel', 'end'); }
   else if (c.phase === 'ringing') { state = 'T-Mobile · incoming call'; controls = ctl('red', 'phoneOff', 'Decline', 'decline') + ctl('green', 'phone', 'Accept', 'accept'); body = bubbles ? `<div class="transcript">${bubbles}</div>` : ''; }
   if (c.phase === 'screening') { state = 'ScamShield is screening this call'; body = `<div class="transcript">${bubbles}</div>`; controls = ctl('red', 'phoneOff', 'Hang up', 'hangup') + ctl('green', 'phone', 'Take over', 'takeover'); }
   if (c.phase === 'connected') {
@@ -456,8 +481,8 @@ function callHtml() {
   }
   if (c.phase === 'ended') {
     const byShield = c.endedBy === 'ScamShield';
-    const msg = { fraud: 'This number was flagged as fraud and added to your activity. The verdict came from the live transcript.', screened: 'The caller would not identify themselves and was hung up on. Nothing rang on your phone.', scam: 'This Scam Likely call was logged. Turn on Scam Block to stop calls like this before they ring.', ai: 'A synthetic voice was detected on this call and it was logged.' }[c.outcome] || 'Call logged in your ScamShield activity.';
-    body = `<div class="summary"><div class="orb">${ico(byShield ? 'shieldCheck' : 'phoneOff')}</div><h3>${byShield ? 'Call ended by ScamShield' : 'Call ended'}</h3><p>${msg}</p></div>`;
+    const msg = { fraud: 'This number was flagged as fraud and added to your activity. The verdict came from the live transcript.', screened: 'The caller would not identify themselves and was hung up on. Nothing rang on your phone.', scam: c.summary ? 'ScamShield interviewed this caller, judged it a likely scam and ended the call. Nothing rang on your phone.' : 'This Scam Likely call was logged. Turn on Scam Block to stop calls like this before they ring.', ai: 'A synthetic voice was detected on this call and it was logged.', forwarded: 'ScamShield interviewed this caller and connected them to you. The summary is saved in your activity.', missed: 'ScamShield interviewed this caller, but the call was not picked up. The summary is saved in your activity.' }[c.outcome] || 'Call logged in your ScamShield activity.';
+    body = `<div class="summary"><div class="orb">${ico(byShield ? 'shieldCheck' : 'phoneOff')}</div><h3>${byShield ? 'Call ended by ScamShield' : 'Call ended'}</h3><p>${msg}</p>${c.summary ? `<p class="recap">${esc(c.summary.summary)}</p>` : ''}</div>`;
     controls = `<div style="width:100%;display:flex;flex-direction:column;gap:10px"><button class="btn primary" data-act="callAct" data-val="report">${ico('flag')} Report this number</button><button class="btn outline-light" data-act="callAct" data-val="done">Done</button></div>`;
   }
   return `<div class="call"><div class="top"><div class="label ${labelCls}">${ico(c.phase === 'screening' ? 'headset' : 'alert')} ${esc(c.label)}</div><div class="who">${esc(c.num)}</div><div class="where">${esc(c.loc || '')}${c.callerId ? ' · T-Mobile Caller ID' : ''}</div><div class="state">${state}</div></div><div class="body">${body}</div><div class="controls">${controls}</div></div>`;
@@ -575,7 +600,7 @@ function render(resetScroll) {
   renderOverlay();
 }
 const last = { sheet: '', call: null, toast: '' };
-function callKey() { const c = S.call; return [c.scn, c.phase, c.endedBy, c.callerId, c.label, c.remote].join('|') + '#' + [c.dismissed, c.transcript.length, c.alerts.length, S.premium].join('|'); }
+function callKey() { const c = S.call; return [c.scn, c.phase, c.endedBy, c.callerId, c.label, c.remote, !!c.summary].join('|') + '#' + [c.dismissed, c.transcript.length, c.alerts.length, S.premium].join('|'); }
 function updateCall(callEl, k) {
   const html = callHtml();
   const sameShell = last.call && last.call.split('#')[0] === k.split('#')[0] && callEl.querySelector('.body');

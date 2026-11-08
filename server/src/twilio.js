@@ -5,6 +5,7 @@ import twilio from 'twilio';
 import { WebSocketServer } from 'ws';
 import { openStt, sttEnabled } from './stt.js';
 import { e164, pretty } from './db.js';
+import { NUDGE } from './screener.js';
 
 const SID = process.env.TWILIO_ACCOUNT_SID || '', TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
 const FROM = e164(process.env.TWILIO_NUMBER || '') || process.env.TWILIO_NUMBER || '';   // Twilio wants +1XXXXXXXXXX
@@ -39,7 +40,7 @@ export const OUTBOUND_SCRIPTS = {
     'We are reaching out about your vehicle extended warranty, which is about to expire. Press one to speak with a specialist before coverage lapses.',
   ],
 };
-const SCREENER_PROMPT = name => `Hi, I'm screening calls for ${name}. May I ask who is calling and what it's about?`;
+const SCREENER_PROMPT = name => `Hi, I'm screening calls for ${name}. May I ask who is calling?`;
 
 let warnedUnsigned = false;
 function validate(c, params) {
@@ -101,25 +102,80 @@ export function registerTwilio(app, deps) {
       return xml(c, vr);
     }
 
-    // ---- inbound call to the ScamShield number: Call Screener ----
+    // ---- inbound call to the ScamShield number: Call Screener interview ----
+    // The Media Stream (caller audio -> Deepgram) runs for the whole call. TwiML is driven by a short wait loop:
+    // every ~2s Twilio asks us what to do next, and we speak the next question, a nudge, or the hand-off.
     const from = e164(p.From) || p.From || '+10000000000';
-    const line = await getLine(LINE_ID);
+    const wait = call => { vr.pause({ length: 2 }); vr.redirect({ method: 'POST' }, abs(`/webhooks/twilio/voice?callId=${call.id}&step=wait`)); };
+    const say = (call, text) => { addTranscript(call.id, text, 'ScamShield').catch(console.error); vr.say({ voice: VOICE }, text); };
     if (!q.callId) {
       // ring: true lets unknown numbers through to the screener; explicit block-list entries are still rejected.
       const r = await incomingCall({ lineId: LINE_ID, e164: from, scenario: 'screener', source: 'twilio', ring: true });
       if (!r.id) { vr.say({ voice: VOICE }, 'This number is not accepting calls from your number. Goodbye.'); vr.hangup(); return xml(c, vr); }
       const call = live.get(r.id); call.twilioSid = p.CallSid; call.remote = true;
       startStream(vr, r.id, 'inbound');
-      vr.say({ voice: VOICE }, SCREENER_PROMPT(line?.name || 'the subscriber'));
-      vr.pause({ length: 10 });
-      vr.redirect({ method: 'POST' }, abs(`/webhooks/twilio/voice?callId=${r.id}&step=1`));
+      const first = call.pendingSay; call.pendingSay = null; call.askedAt = Date.now();
+      say(call, first || SCREENER_PROMPT((await getLine(LINE_ID))?.name || 'the subscriber'));
+      wait(call);
       return xml(c, vr);
     }
     const call = live.get(q.callId);
-    const step = Number(q.step || 1);
     if (!call || call.phase === 'ended') { vr.hangup(); return xml(c, vr); }
-    if (step === 1) { vr.say({ voice: VOICE }, "Sorry, I didn't catch that. Who is calling, please?"); vr.pause({ length: 10 }); vr.redirect({ method: 'POST' }, abs(`/webhooks/twilio/voice?callId=${call.id}&step=2`)); }
-    else { vr.say({ voice: VOICE }, 'No one is available right now. Goodbye.'); vr.hangup(); setTimeout(() => endCall(call.id, 'ScamShield', 'screened', { note: 'Caller did not identify themselves', fromTwilio: true }), 500); }
+    // decision reached: refuse, or hand off to the subscriber's phone with the summary already on screen
+    if (call.pendingTwiml) {
+      const pt = call.pendingTwiml; call.pendingTwiml = null;
+      say(call, pt.say);
+      if (pt.kind === 'dial') {
+        call.dialing = true;
+        const d = vr.dial({ callerId: FROM, timeout: 25, timeLimit: MAX_CALL_SECONDS, answerOnBridge: true, action: abs(`/webhooks/twilio/dial?callId=${call.id}`), method: 'POST' });
+        d.number({ statusCallback: abs(`/webhooks/twilio/dial-status?callId=${call.id}`), statusCallbackEvent: 'answered completed', statusCallbackMethod: 'POST' }, pt.to);
+        // if the subscriber does not pick up, Twilio continues at /webhooks/twilio/dial
+        call.unavailableText = pt.unavailable;
+      } else {
+        vr.hangup(); call.saidGoodbye = true;
+        const [by, outcome, extra] = pt.end;
+        setTimeout(() => endCall(call.id, by, outcome, { ...extra, fromTwilio: true }), 500);
+      }
+      return xml(c, vr);
+    }
+    if (call.pendingSay) { const t = call.pendingSay; call.pendingSay = null; call.askedAt = Date.now(); say(call, t); wait(call); return xml(c, vr); }
+    if (call.phase === 'screening' && call.awaiting && Date.now() - call.askedAt > 12_000) {
+      if ((call.nudges || 0) < 1) { call.nudges = (call.nudges || 0) + 1; call.askedAt = Date.now(); say(call, NUDGE(call.questions[call.qIndex])); wait(call); return xml(c, vr); }
+      say(call, 'No one is available right now. Goodbye.'); vr.hangup(); call.saidGoodbye = true;
+      setTimeout(() => endCall(call.id, 'ScamShield', 'screened', { note: 'Caller stopped answering the screener', fromTwilio: true }), 500);
+      return xml(c, vr);
+    }
+    wait(call);
+    return xml(c, vr);
+  });
+
+  // the subscriber's leg: 'in-progress' means they picked up
+  app.post('/webhooks/twilio/dial-status', async c => {
+    const p = await c.req.parseBody();
+    if (!validate(c, p)) return c.text('bad signature', 403);
+    const call = live.get(c.req.query('callId'));
+    if (call && p.CallStatus === 'in-progress' && call.phase !== 'connected' && call.phase !== 'ended') {
+      call.phase = 'connected'; call.started = Date.now(); call.dialing = false;
+      deps.publish('call', { phase: 'connected', id: call.id, remote: true });
+    }
+    return c.text('ok');
+  });
+
+  // <Dial> finished: either the conversation ended, or nobody picked up
+  app.post('/webhooks/twilio/dial', async c => {
+    const p = await c.req.parseBody();
+    if (!validate(c, p)) return c.text('bad signature', 403);
+    const vr = new VoiceResponse();
+    const call = live.get(c.req.query('callId'));
+    if (!call || call.phase === 'ended') { vr.hangup(); return xml(c, vr); }
+    const st = p.DialCallStatus;
+    if (st === 'completed' || call.phase === 'connected') {
+      vr.hangup(); call.saidGoodbye = true;
+      setTimeout(() => endCall(call.id, 'you', 'forwarded', { fromTwilio: true }), 300);
+    } else {
+      vr.say({ voice: VOICE }, call.unavailableText || 'No one is available right now. Goodbye.'); vr.hangup(); call.saidGoodbye = true;
+      setTimeout(() => endCall(call.id, 'ScamShield', 'missed', { fromTwilio: true, note: `${call.summary?.summary || 'Screened call'} (not answered: ${st})` }), 300);
+    }
     return xml(c, vr);
   });
 
@@ -190,7 +246,8 @@ export async function sayAndHangup(sid, text, { dial } = {}) {
   if (dial) vr.dial({ timeLimit: MAX_CALL_SECONDS }, dial); else vr.hangup();
   try { await client.calls(sid).update({ twiml: vr.toString() }); } catch (e) { console.warn('update failed', e.message); }
 }
-export const forwardTarget = () => FORWARD_TO;
+/** Where a screened call is handed off: TWILIO_FORWARD_TO, else the demo phone (the subscriber's real handset). */
+export const forwardTarget = () => e164(FORWARD_TO) || e164(process.env.DEMO_PHONE || '') || '';
 
 /** Media Streams WebSocket: Twilio -> Deepgram -> transcript events. */
 export function attachMediaServer(httpServer, deps) {

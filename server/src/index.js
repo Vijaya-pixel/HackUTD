@@ -12,6 +12,7 @@ import { subscribe, publish, clientCount } from './sse.js';
 import { startPhoton, sendToLine, getOutbox, photonEnabled, photonStatus } from './photon.js';
 import { llmEnabled } from './llm.js';
 import { registerTwilio, attachMediaServer, hangupTwilio, sayAndHangup, forwardTarget, twilioEnabled } from './twilio.js';
+import { QUESTIONS, CONNECTING, REFUSED, NOT_AVAILABLE, summarizeScreening, hardFraud } from './screener.js';
 import { registerLearn, setPhotonSender } from './learn.js';
 
 const app = new Hono();
@@ -150,7 +151,8 @@ const SCENARIOS = {
   scam:     { e164: '+13125550107', script: [] },
   // ring: true models a number the network has not seen yet, so pre-ring cannot stop it and in-call detection has to.
   fraud:    { e164: '+17025550119', ring: true, script: [[2, 'Hi, this is the fraud department at your bank. We detected suspicious activity and need to move your money now. Please read me the code we just texted you.']] },
-  screener: { e164: '+14045550151', script: [[2, "Uh... yeah, this is about your car's extended warranty. It's about to expire."]] },
+  // one scripted answer per screener question
+  screener: { e164: '+14045550151', script: [[2.5, "Uh... yeah, this is about your car's extended warranty. It's about to expire."], [2.5, "I'm with, uh, Vehicle Protection Services. We're the warranty department."], [2.5, "No, there's no callback number. This offer is only good today, so they need to decide now."]] },
 };
 const live = new Map(); // callId -> { lineId, e164, transcript, phase, timers }
 
@@ -188,7 +190,7 @@ export async function incomingCall({ lineId, e164: num, scenario = 'custom', sou
   // scripted caller lines (the simulation's stand-in for Twilio audio). For a screened call the caller
   // talks to the screener right away; otherwise the script starts when the call is answered.
   call.script = script;
-  if (screen) { runScreener(call, line); scheduleScript(call); }
+  if (screen) { call.questions = QUESTIONS(line.name); call.answers = []; call.lineName = line.name; askQuestion(call, 0); }
   return { outcome: 'ringing', id, decision };
 }
 
@@ -210,27 +212,13 @@ async function addTranscript(id, text, who = 'caller') {
   const premium = (await one('SELECT premium FROM accounts WHERE id = $1', [line.account_id]))?.premium;
   const t = line.toggles || {};
   if (call.phase === 'screening') {
-    // screener decides from the caller's answer
-    const verdict = await judgeTranscript(call.transcript);
-    call.verdict = verdict;
-    if (call.screenDecided) return; // one decision per screened call
-    call.screenDecided = true;
-    if (verdict.confidence >= 0.6 || verdict.category === 'Telemarketing') {
-      const bye = `${line.name} is not available for sales calls. Goodbye.`;
-      call.timers.push(setTimeout(() => addTranscript(id, bye, 'ScamShield'), 1200));
-      if (call.twilioSid) { call.saidGoodbye = true; sayAndHangup(call.twilioSid, bye); }
-      call.timers.push(setTimeout(() => endCall(id, 'ScamShield', 'screened', { category: verdict.category, note: `Caller said: "${text}"`, fromTwilio: !!call.twilioSid }), 3200));
-    } else {
-      const fwd = forwardTarget();
-      const msg = call.twilioSid && !fwd ? `Thanks. ${line.name} will call you back. Goodbye.` : `One moment, connecting you to ${line.name}.`;
-      call.timers.push(setTimeout(() => addTranscript(id, msg, 'ScamShield'), 1200));
-      if (call.twilioSid) {
-        call.saidGoodbye = true; sayAndHangup(call.twilioSid, msg, fwd ? { dial: fwd } : {});
-        if (!fwd) call.timers.push(setTimeout(() => endCall(id, 'ScamShield', 'screened', { category: 'Identified caller', note: `Caller said: "${text}"`, fromTwilio: true }), 4000));
-      } else {
-        call.timers.push(setTimeout(() => { call.phase = 'ringing'; publish('call', { phase: 'ringing', id, lineId: call.lineId, num: pretty(call.e164), label: 'Screened caller', loc: call.rep?.location, risk: call.decision.risk, scenario: call.scenario }); }, 2600));
-      }
-    }
+    // The screener runs a short interview: one answer per question, then a summary and a hand-off to the subscriber.
+    if (call.screenDecided) return;
+    if (!call.awaiting) { if (call.answers.length) call.answers[call.answers.length - 1] += ' ' + text; return; } // caller kept talking
+    call.awaiting = false; call.answers.push(text);
+    const next = call.qIndex + 1;
+    if (next < call.questions.length) { call.timers.push(setTimeout(() => askQuestion(call, next), 900)); return; }
+    await decideScreening(call, line);
     return;
   }
   if (call.phase !== 'connected') return;
@@ -257,7 +245,8 @@ function callSnapshot(call) {
   return {
     id: call.id, lineId: call.lineId, phase: call.phase, num: pretty(call.e164), e164: call.e164, label: call.decision.label,
     loc: call.rep?.location, risk: call.decision.risk, callerId: !!call.callerId, scenario: call.scenario, remote: !!call.remote,
-    transcript, alerts: call.alertDetails || [], endedBy: call.endedBy, outcome: call.outcome,
+    transcript, alerts: call.alertDetails || [], endedBy: call.endedBy, outcome: call.outcome, summary: call.summary || null, forwarded: !!call.forwarded,
+    label: call.summary?.label || call.decision.label, risk: call.summary?.risk ?? call.decision.risk,
     t: call.phase === 'connected' ? Math.round((Date.now() - call.started) / 1000) : 0, endedAt: call.endedAt || null,
   };
 }
@@ -266,8 +255,49 @@ function scheduleScript(call) {
   for (const [sec, text] of call.script || []) call.timers.push(setTimeout(() => addTranscript(call.id, text, 'caller').catch(console.error), sec * 1000));
   call.script = [];
 }
-function runScreener(call, line) {
-  call.timers.push(setTimeout(() => addTranscript(call.id, `Hi, I'm screening calls for ${line.name}. May I ask who is calling?`, 'ScamShield'), 400));
+/** Ask screener question `idx`. On Twilio the voice webhook's wait loop speaks `pendingSay`; in the simulation the
+    scripted caller answers from the scenario's script. */
+function askQuestion(call, idx) {
+  const q = call.questions[idx];
+  call.qIndex = idx; call.awaiting = true; call.askedAt = Date.now(); call.nudges = 0;
+  if (call.twilioSid || call.source === 'twilio') { call.pendingSay = q; return; }
+  call.timers.push(setTimeout(() => addTranscript(call.id, q, 'ScamShield'), 400));
+  const reply = (call.script || []).shift();
+  if (reply) call.timers.push(setTimeout(() => addTranscript(call.id, reply[1], 'caller').catch(console.error), 400 + reply[0] * 1000));
+}
+
+/** Interview over: summarize with Gemini, then either refuse a clear scam (Scam Block on) or ring the subscriber
+    with the summary on screen. */
+async function decideScreening(call, line) {
+  if (call.screenDecided) return;
+  call.screenDecided = true;
+  const name = line.name;
+  const s = await summarizeScreening(call.transcript);
+  call.summary = s;
+  call.verdict = { tactic: s.verdict === 'likely_scam' ? 'impersonation' : s.verdict === 'sales' ? 'sales' : 'none', confidence: s.risk / 100, synthetic_voice_hint: false, one_line_warning: s.summary, category: s.category, engine: s.engine };
+  // Policy: the subscriber decides. Only an outright fraud tactic (passcode, gift card, remote access, "move your money
+  // now") with Scam Block on is refused outright; sales pitches and vague callers ring through with the summary on screen.
+  const refuse = hardFraud(call.transcript) && line.toggles?.scamBlock;
+  if (call.phase === 'ended') return;
+  if (refuse) {
+    publish('call', { phase: 'screening', id: call.id, lineId: call.lineId, num: pretty(call.e164), e164: call.e164, label: s.label, loc: call.rep?.location, risk: s.risk, callerId: call.callerId, scenario: call.scenario, remote: !!call.twilioSid, summary: s });
+    const bye = REFUSED(name);
+    if (call.twilioSid) { call.pendingTwiml = { kind: 'hangup', say: bye, end: ['ScamShield', 'scam', { category: s.category, note: s.summary }] }; return; }
+    call.timers.push(setTimeout(() => addTranscript(call.id, bye, 'ScamShield'), 800));
+    call.timers.push(setTimeout(() => endCall(call.id, 'ScamShield', 'scam', { category: s.category, note: s.summary }), 3000));
+    return;
+  }
+  const to = call.twilioSid ? forwardTarget() : null;
+  const msg = call.twilioSid && !to ? `Thanks. ${name} will call you back. Goodbye.` : CONNECTING(name);
+  call.phase = 'ringing'; call.forwarded = true;
+  publish('call', { phase: 'ringing', id: call.id, lineId: call.lineId, num: pretty(call.e164), e164: call.e164, label: s.label, loc: call.rep?.location, risk: s.risk, callerId: call.callerId, scenario: call.scenario, remote: !!call.twilioSid, forwarded: true, summary: s });
+  if (call.twilioSid) {
+    call.pendingTwiml = to
+      ? { kind: 'dial', say: msg, to, unavailable: NOT_AVAILABLE(name) }
+      : { kind: 'hangup', say: msg, end: ['ScamShield', 'missed', { category: s.category, note: s.summary }] };
+    return;
+  }
+  call.timers.push(setTimeout(() => addTranscript(call.id, msg, 'ScamShield'), 600));
 }
 
 async function endCall(id, by, outcomeHint, extra = {}) {
@@ -281,13 +311,14 @@ async function endCall(id, by, outcomeHint, extra = {}) {
     if (call.alerts.includes('fraud')) outcome = 'fraud';
     else if (call.alerts.includes('ai')) outcome = 'ai';
     else if (call.decision.outcome === 'scam') outcome = 'scam';
+    else if (call.summary) outcome = call.phase === 'connected' ? 'forwarded' : 'missed';
     else if (call.decision.outcome === 'identified') outcome = 'identified';
     else outcome = call.phase === 'screening' ? 'screened' : 'allowed';
   }
   call.phase = 'ended'; call.endedBy = by; call.outcome = outcome; call.endedAt = Date.now();
   const act = outcome === 'allowed' ? null : await logEvent(call.lineId, call.e164, outcome, {
-    category: extra.category || (outcome === 'fraud' ? 'Fraud detected' : outcome === 'ai' ? 'AI voice detected' : call.decision.category),
-    risk: call.decision.risk, note: extra.note || call.verdict?.one_line_warning || null, transcript: call.transcript || null, verdict: call.verdict || null, duration_s: duration, source: call.source });
+    category: extra.category || (outcome === 'fraud' ? 'Fraud detected' : outcome === 'ai' ? 'AI voice detected' : call.summary?.category || call.decision.category),
+    risk: call.summary?.risk ?? call.decision.risk, note: extra.note || call.summary?.summary || call.verdict?.one_line_warning || null, transcript: call.transcript || null, verdict: call.verdict || null, duration_s: duration, source: call.source });
   publish('call', { phase: 'ended', id, endedBy: by, outcome, duration, activity: act });
   setTimeout(() => live.delete(id), 5 * 60_000);
   return { outcome, activity: act };

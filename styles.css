@@ -340,3 +340,23 @@ textarea.area{width:100%;border:1px solid var(--line);border-radius:12px;padding
 .skill .fill.mid{background:var(--amber)}
 .skill .fill.low{background:var(--red)}
 .chat.replay .msg.them{border-color:#F2B9D8}
+
+/* screening summary card (shown while the subscriber's phone rings after the screener interview) */
+.alert.screen{text-align:left}
+.alert.screen .ah{justify-content:flex-start}
+.alert .riskpill{margin-left:auto;font-size:12px;font-weight:700;border-radius:999px;padding:3px 9px}
+.alert .riskpill.red{background:var(--red-tint);color:var(--red)}
+.alert .riskpill.amber{background:var(--amber-tint);color:var(--amber)}
+.alert .riskpill.green{background:var(--green-tint);color:var(--green)}
+.alert .kv{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin:8px 0 10px}
+.alert .kv div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.alert .kv span{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.3px}
+.alert .kv b{font-size:14px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alert .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.alert .chips .chip{font-size:12px;font-weight:600;color:var(--red);background:var(--red-tint);border-radius:999px;padding:4px 9px}
+.alert .rec{display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:700;font-size:14px;border-radius:10px;padding:9px 12px}
+.alert .rec svg{width:16px;height:16px}
+.alert .rec.red{background:var(--red-tint);color:var(--red)}
+.alert .rec.amber{background:var(--amber-tint);color:var(--amber)}
+.alert .rec.green{background:var(--green-tint);color:var(--green)}
+.call .summary .recap{margin-top:10px;font-size:14px;color:rgba(255,255,255,.75);font-style:italic}
