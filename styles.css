@@ -930,3 +930,5 @@ body{display:block;min-height:100dvh;background:var(--bg)}
 .call .bubble.us{background:rgba(255,255,255,.24)}
 .quest .map::before{width:auto;height:auto;transform:none}
 .quest .map::after{display:none}
+.quest .map::before{bottom:-220px}
+#content:has(.quest){overflow:clip}
