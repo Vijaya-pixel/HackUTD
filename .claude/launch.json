@@ -5,7 +5,7 @@
       "name": "api",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "server", "start"],
-      "port": 8787
+      "port": 8788
     },
     {
       "name": "tlife",

@@ -124,7 +124,7 @@ function homeScreen() {
     <div class="cta"><span>Open ScamShield</span>${ico('chevR')}</div>
   </button>
   <div class="stat-dark"><div class="st"><div class="n">4.88</div><div class="l">GB used this month</div></div><div class="st"><div class="n">17</div><div class="l">Days until bill</div></div></div>
-  <div class="card"><div class="eyebrow">Your bill</div><div class="big">$142.50</div><p class="desc">Due Nov 25 · AutoPay is on</p>
+  <div class="card"><div class="between"><div class="label">Current balance</div><span class="dotpill">AutoPay on</span></div><div class="amount">$142.50</div><div class="label">Due Nov 25</div>
     <div class="btn-row"><button class="btn primary sm" data-act="toast" data-val="Payments are not part of this demo">Pay now</button><button class="btn outline sm" data-act="toast" data-val="Bill details are not part of this demo">View bill</button></div></div>
   <h2 class="section">Quick actions</h2>
   <div class="tiles">${tile('dollar', 'Pay bill', 'toast', 'Payments are not part of this demo')}${tile('shield', 'ScamShield', 'go', 'scamshield', true)}${tile('book', 'Scam practice', 'tab', 'learn')}${tile('upgrade', 'Upgrade', 'toast', 'Shopping is not part of this demo')}${tile('headset', 'Support', 'toast', 'Support chat is not part of this demo')}</div>
@@ -182,12 +182,18 @@ function accountScreen() {
   const na = 'Not part of this demo';
   return `
   ${header('Account', { icons: [['settings', 'toast', na]] })}
-  <div class="card"><div style="display:flex;gap:14px;align-items:center"><div class="avatar lg">AR</div><div><div class="big" style="font-size:20px">Anne Rivera</div><p class="desc" style="margin-top:2px">Experience More · ${LINES.length} lines</p><p class="desc" style="margin-top:0">Account ending in 4471</p></div></div></div>
-  <div class="card flush"><div class="rows-title">Lines</div>
+  <div class="plan-title">Experience More plan</div>
+  <div class="plan-sub">+ Home Internet · ${LINES.length} lines</div>
+  <div class="tiles">${tile('clipboard', 'My plans', 'toast', na)}${tile('plus', 'Add-ons', 'toast', na)}${tile('userPlus', 'Add a line', 'toast', na)}${tile('shield', 'ScamShield', 'go', 'scamshield')}${tile('book', 'Scam practice', 'tab', 'learn')}</div>
+  <h2 class="section">Billing and payments</h2>
+  <div class="card"><div class="between"><div class="label">Current balance</div><span class="dotpill">AutoPay on</span></div><div class="amount">$142.50</div><div class="label">Due Nov 25 · Experience More · 3 lines</div>
+    <div class="btn-row"><button class="btn primary sm" data-act="toast" data-val="Payments are not part of this demo">Pay now</button><button class="btn outline sm" data-act="toast" data-val="Bill details are not part of this demo">View bill</button></div></div>
+  <h2 class="section">Lines and devices</h2>
+  <div class="card flush">
     ${LINES.map(l => row({ avatar: `<div class="avatar ${l.primary ? '' : 'gray'}">${l.initials}</div>`, title: esc(l.device), sub: `${l.num} · ScamShield ${l.toggles?.scamBlock ? 'on' : 'partial'}`, act: 'lineGo', val: l.id })).join('')}
   </div>
+  <h2 class="section">Settings</h2>
   <div class="card flush">
-    ${row({ icon: 'dollar', cls: 'gray', title: 'Billing & payments', sub: '$142.50 due Nov 25', act: 'toast', val: na })}
     ${row({ icon: 'shield', cls: 'magenta', title: 'ScamShield Premium', sub: S.premium ? 'Active · $4.00/mo per line' : 'Not added', act: 'sheet', val: 'premium' })}
     ${row({ icon: 'user', cls: 'gray', title: 'Caller ID name', sub: 'Anne Rivera', act: 'toast', val: 'Caller ID name changes are not part of this demo' })}
     ${row({ icon: 'lock', cls: 'gray', title: 'Privacy & security', act: 'toast', val: na })}
