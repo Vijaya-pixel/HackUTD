@@ -83,6 +83,9 @@ export async function handleInbound(space, message) {
   if (line && space?.id) q('UPDATE lines SET photon_space_id = $2 WHERE id = $1', [line.id, space.id]).catch(() => {});
   console.log('[photon] inbound from', pretty(e164(fromHandle) || fromHandle), '->', line?.id || 'unknown line', ':', text.slice(0, 80));
 
+  // An active Safe Signal practice session on this line consumes the message (replies go out via sendToLine).
+  try { const { learnInbound } = await import('./learn.js'); if (await learnInbound(line?.id, text)) return { handled: 'learn' }; } catch (e) { console.warn('[photon] learn hook error:', e.message); }
+
   const num = e164(text.match(/\+?1?\D*(\d{3})\D*(\d{3})\D*(\d{4})/)?.[0]);
   let reply;
   if (num) {

@@ -305,3 +305,28 @@ textarea.area{width:100%;border:1px solid var(--line);border-radius:12px;padding
 .timer{font-variant-numeric:tabular-nums}
 .pill-demo{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .pill-demo .btn{width:auto;height:40px;font-size:14px;padding:0 14px}
+
+/* Learn tab: sandbox chat, lesson replay, skills */
+.chat{display:flex;flex-direction:column;gap:10px;padding:4px 0 12px}
+.msg{max-width:86%;padding:10px 14px;border-radius:18px;font-size:15px;line-height:1.45;word-break:break-word}
+.msg.them{background:#fff;border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:6px}
+.msg.me{background:var(--magenta);color:#fff;align-self:flex-end;border-bottom-right-radius:6px}
+.msg .by{display:block;font-size:11px;font-weight:600;opacity:.65;margin-bottom:3px}
+.msg.me .by{text-align:right}
+.msg .flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.msg .why{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
+.sysnote{align-self:center;font-size:12px;color:var(--muted);background:#EEE;border-radius:999px;padding:6px 12px;text-align:center;max-width:92%}
+.inline-link{color:var(--blue);text-decoration:underline;font:inherit;padding:0}
+.msg.me .inline-link{color:#fff}
+.quick{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px 10px;padding:0 16px}
+.quick::-webkit-scrollbar{display:none}
+.quick .chip svg{width:16px;height:16px}
+.skill{padding:8px 0}
+.skill .row-top{display:flex;justify-content:space-between;font-size:14px;font-weight:600;margin-bottom:6px}
+.skill .muted,.muted{color:var(--muted);font-weight:500}
+.skill .bar{height:8px;border-radius:999px;background:#EEE;overflow:hidden}
+.skill .fill{height:100%;border-radius:999px}
+.skill .fill.good{background:var(--green)}
+.skill .fill.mid{background:var(--amber)}
+.skill .fill.low{background:var(--red)}
+.chat.replay .msg.them{border-color:#F2B9D8}

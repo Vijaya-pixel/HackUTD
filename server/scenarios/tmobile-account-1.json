@@ -1,0 +1,57 @@
+{
+  "id": "tmobile-account-1",
+  "category": "tmobile_account",
+  "interestTags": ["mobile_account"],
+  "brand": "T-Mobile",
+  "difficulty": 1,
+  "opener": "T-MOBILE: Your account has been flagged for unusual activity. Your service will be suspended in 2 hours unless you verify your identity: {{PRACTICE_LINK}}",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "Impersonate T-Mobile fraud alert. Threat of service suspension in 2 hours. Keep it terse and official like a real carrier alert.",
+      "scriptedFallback": "Your T-Mobile service is at risk. Verify your account at the link above within 2 hours to avoid suspension."
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "They replied. Confirm their account with the last 4 of their phone number on the account. Ask them to click the link and log in to their T-Mobile ID.",
+      "scriptedFallback": "To verify, please log in to your T-Mobile ID at the link above. It only takes 60 seconds and will prevent suspension."
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Escalate — a SIM swap was attempted on their account from an unknown device. They must verify immediately to block it.",
+      "scriptedFallback": "⚠️ A SIM swap request was submitted 20 min ago from an unrecognized device. Verify NOW to block it before it processes: {{PRACTICE_LINK}}"
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "Ask them to log in with their T-Mobile ID and confirm the last 4 of their SSN to verify identity and block the SIM swap.",
+      "scriptedFallback": "At the verification page, enter your T-Mobile ID login and the last 4 of your SSN to block the SIM swap permanently."
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. T-Mobile never asks for SSN digits via SMS link. Use the T-Life app to check your account."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "urgency", "explanation": "Account suspension threat creates fear that overrides caution" },
+      { "category": "suspicious_link_or_sender", "explanation": "T-Mobile would direct you to the T-Life app, not an external link" },
+      { "category": "impersonation", "explanation": "Carriers are commonly impersonated because customers expect texts from them" }
+    ],
+    "engage": [
+      { "category": "impersonation", "explanation": "Directing you to 'your T-Mobile ID' at a fake link harvests real credentials" }
+    ],
+    "escalate": [
+      { "category": "urgency", "explanation": "SIM swap threat is particularly alarming because it's a real attack vector" }
+    ],
+    "ask": [
+      { "category": "unusual_payment_or_code", "explanation": "SSN last-4 combined with T-Mobile credentials gives attackers everything needed to take over your account" },
+      { "category": "impersonation", "explanation": "T-Mobile has SIM Protection in the app — they would never ask for SSN by text" }
+    ]
+  }
+}

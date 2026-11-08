@@ -1,0 +1,56 @@
+{
+  "id": "family-emergency-1",
+  "category": "family_emergency",
+  "interestTags": ["family"],
+  "brand": "none",
+  "difficulty": 1,
+  "opener": "Mom it's me. I lost my phone and I'm borrowing a friend's. I got in a small accident and I need $300 for the tow. Can you Zelle me? Don't call the old number.",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "You're pretending to be the target's adult child. Keep it emotional but controlled. Mention 'don't call the old number' to block verification. Use 'Mom' or 'Dad'.",
+      "scriptedFallback": "I'm fine just shaken up. The tow company only takes Zelle or CashApp. I'll pay you back this weekend, I promise."
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "They're asking questions. Answer vaguely — you're in another city visiting a friend. The accident was minor, just a fender bender. Keep asking for the money.",
+      "scriptedFallback": "I'm about 2 hours away — went to visit Tyler. It's just a fender bender but I need the tow now or I'll miss work tomorrow."
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Add more urgency — the tow truck is waiting, it's getting dark, you're stranded. If they want to call you, say your borrowed phone is about to die.",
+      "scriptedFallback": "Tow driver is here and can only wait 10 more minutes. My borrowed phone is at 4%. Please just send the $300 to: {{PRACTICE_LINK}}"
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "Give them the payment link. If they're suspicious, beg them and add more emotional detail. Never break character until the reveal stage.",
+      "scriptedFallback": "Please Mom/Dad — send to {{PRACTICE_LINK}} right now. I'll explain everything when I get home."
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. This is called the 'Grandparent Scam'. Always call your family member's known number to verify."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "urgency", "explanation": "Emergency framing triggers emotional response that bypasses rational thinking" },
+      { "category": "secrecy", "explanation": "'Don't call the old number' blocks you from verifying the person's identity" },
+      { "category": "impersonation", "explanation": "Scammer exploits family relationships to create immediate trust" }
+    ],
+    "engage": [
+      { "category": "secrecy", "explanation": "Vague answers about location are designed to seem plausible but not verifiable" }
+    ],
+    "escalate": [
+      { "category": "urgency", "explanation": "'Phone at 4%' and 'tow driver waiting' block your ability to slow down and verify" }
+    ],
+    "ask": [
+      { "category": "unusual_payment_or_code", "explanation": "Tow companies accept credit cards — requests for Zelle/CashApp are a red flag for fraud" }
+    ]
+  }
+}

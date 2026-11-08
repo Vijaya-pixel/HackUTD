@@ -97,6 +97,25 @@ export async function embed(text) {
   return res.embeddings[0].values;
 }
 
+/** Plain text completion. Returns null when Gemini is unavailable, errors or times out. */
+export async function generateText(prompt, { timeoutMs = 6000, maxChars = 1200 } = {}) {
+  if (!ai) return null;
+  try {
+    const res = await withTimeout(ai.models.generateContent({ model: MODEL, contents: prompt, config: { temperature: 0.7 } }), timeoutMs);
+    return (res.text || '').trim().slice(0, maxChars) || null;
+  } catch (e) { console.warn('[llm] generateText failed:', e.message); return null; }
+}
+
+/** JSON completion against a response schema. Returns null on failure. */
+export async function generateJson(prompt, responseSchema, { timeoutMs = 6000 } = {}) {
+  if (!ai) return null;
+  try {
+    const res = await withTimeout(ai.models.generateContent({ model: MODEL, contents: prompt, config: { responseMimeType: 'application/json', responseSchema, temperature: 0.1 } }), timeoutMs);
+    return JSON.parse(res.text);
+  } catch (e) { console.warn('[llm] generateJson failed:', e.message); return null; }
+}
+export { Type as SchemaType };
+
 /** Short reply text for the Photon report-by-text flow. Rules when no key. */
 export async function draftReply(number, info) {
   const base = `${number}: ${info.category || 'Unknown'}, risk ${info.risk}/100, reported by ${info.reports_30d} customers in 30 days.`;

@@ -1,0 +1,56 @@
+{
+  "id": "tmobile-account-2",
+  "category": "tmobile_account",
+  "interestTags": ["mobile_account"],
+  "brand": "T-Mobile",
+  "difficulty": 2,
+  "opener": "Hi! Sam here from T-Mobile Care. We're doing a free account security review for select customers this week. You were randomly selected. It takes about 3 minutes — want me to walk you through it?",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "Be friendly, helpful, and low-pressure. You're doing them a favor with a free security review. No red flags yet — build rapport. Act like a real T-Mobile rep who cares.",
+      "scriptedFallback": "Great! I'll just pull up your account. This is completely free — T-Mobile is rolling it out to improve customer protection. It won't affect your plan at all."
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "Walk them through 'security settings' — mention Scam Block, SIM Protection, trusted devices. Ask them to confirm their account PIN to 'verify identity before the review'.",
+      "scriptedFallback": "To start, I need to verify your account. Can you confirm your 4-digit account PIN? This keeps the review secure on our end."
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Tell them their Scam Block is currently off and their SIM is unprotected. This is a risk. You can fix it right now — just need to confirm one more thing.",
+      "scriptedFallback": "Your Scam Block and SIM Protection are both off — leaving you exposed. I can enable both right now. I just need to send a confirmation code to verify."
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "Ask for the OTP they just received, claiming it confirms your authorization to change their account settings. Sound helpful throughout.",
+      "scriptedFallback": "T-Mobile just sent you a 6-digit code — read it back to me and I'll enable both protections immediately. Your account will be secured in 30 seconds."
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. T-Mobile never calls to ask for your PIN or OTP. Enable Scam Block yourself at #ONB# or in the T-Life app."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "impersonation", "explanation": "Unsolicited 'free security reviews' from carriers are not a real thing" },
+      { "category": "too_good_to_be_true", "explanation": "'Randomly selected' for a benefit is a classic hook to get you to engage" }
+    ],
+    "engage": [
+      { "category": "unusual_payment_or_code", "explanation": "Your 4-digit account PIN is used for account takeovers — no T-Mobile rep needs it verbally" },
+      { "category": "impersonation", "explanation": "Real T-Mobile reps can access accounts without asking for your PIN" }
+    ],
+    "escalate": [
+      { "category": "urgency", "explanation": "Telling you that your security features are off is designed to make you grateful for their 'help'" }
+    ],
+    "ask": [
+      { "category": "unusual_payment_or_code", "explanation": "Sharing the OTP gives the scammer direct access to your account to perform a SIM swap" }
+    ]
+  }
+}

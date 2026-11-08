@@ -7,6 +7,7 @@ let S = Object.assign({ tab: 'home', stack: [], line: 0, filter: 'all' }, loadPr
   ready: false, error: null, premium: false, toggles: {}, categories: {}, blocked: [], allowed: [], lookups: [],
   stats: { blocked: 0, flagged: 0, identified: 0 }, allStats: {}, activity: [],
   sheet: null, toast: null, call: null, lookupQ: '', lookupRes: null, reason: null, addNum: '', reportText: '',
+  learn: null, session: null, lessonSession: null, learnInput: '', detectText: '', detectRes: null, optin: { channel: 'simulator', interests: ['mobile_account', 'package_delivery'] }, pickCategory: null,
 });
 function loadPrefs() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
 function save() { try { localStorage.setItem(KEY, JSON.stringify({ tab: S.tab, stack: S.stack, line: S.line, filter: S.filter })); } catch {} }
@@ -126,7 +127,7 @@ function homeScreen() {
   <div class="card"><div class="eyebrow">Your bill</div><div class="big">$142.50</div><p class="desc">Due Nov 25 · AutoPay is on</p>
     <div class="btn-row"><button class="btn primary sm" data-act="toast" data-val="Payments are not part of this demo">Pay now</button><button class="btn outline sm" data-act="toast" data-val="Bill details are not part of this demo">View bill</button></div></div>
   <h2 class="section">Quick actions</h2>
-  <div class="tiles">${tile('dollar', 'Pay bill', 'toast', 'Payments are not part of this demo')}${tile('shield', 'ScamShield', 'go', 'scamshield', true)}${tile('userPlus', 'Add a line', 'tab', 'shop')}${tile('upgrade', 'Upgrade', 'tab', 'shop')}${tile('headset', 'Support', 'toast', 'Support chat is not part of this demo')}</div>
+  <div class="tiles">${tile('dollar', 'Pay bill', 'toast', 'Payments are not part of this demo')}${tile('shield', 'ScamShield', 'go', 'scamshield', true)}${tile('book', 'Scam practice', 'tab', 'learn')}${tile('upgrade', 'Upgrade', 'toast', 'Shopping is not part of this demo')}${tile('headset', 'Support', 'toast', 'Support chat is not part of this demo')}</div>
   <h2 class="section">More for you</h2>
   <div class="promo">
     <div class="card dark"><div class="eyebrow">T-Satellite</div><div class="big">Connecting you anywhere</div></div>
@@ -435,9 +436,99 @@ function callHtml() {
   return `<div class="call"><div class="top"><div class="label ${labelCls}">${ico(c.phase === 'screening' ? 'headset' : 'alert')} ${esc(c.label)}</div><div class="who">${esc(c.num)}</div><div class="where">${esc(c.loc || '')}${c.callerId ? ' · T-Mobile Caller ID' : ''}</div><div class="state">${state}</div></div><div class="body">${body}</div><div class="controls">${controls}</div></div>`;
 }
 
+/* ---------- Learn tab (Safe Signal practice) ---------- */
+const INTERESTS = [['mobile_account', 'Mobile account'], ['package_delivery', 'Package delivery'], ['finance', 'Banking'], ['driving', 'Tolls & driving'], ['career', 'Job offers'], ['family', 'Family'], ['shopping', 'Shopping'], ['travel', 'Travel']];
+const CAT_ICON = { package_delivery: 'tag', toll_fee: 'card', job_offer: 'clipboard', family_emergency: 'users', bank_alert: 'dollar', tmobile_account: 'sim' };
+const FLAG_CLS = { urgency: 'amber', impersonation: 'red', secrecy: 'blue', unusual_payment_or_code: 'red', suspicious_link_or_sender: 'magenta', too_good_to_be_true: 'amber' };
+const flagLabel = c => ({ urgency: 'Urgency', impersonation: 'Impersonation', secrecy: 'Secrecy', unusual_payment_or_code: 'Payment / code', suspicious_link_or_sender: 'Suspicious link', too_good_to_be_true: 'Too good to be true' })[c] || c;
+const isOver = s => s && ['ended_caught', 'ended_fell', 'ended_timeout', 'opted_out'].includes(s.state);
+async function loadLearn() { S.learn = await api.get(`/learn/${curLine().lineId}`); render(); }
+async function openSession(id) { S.session = await api.get(`/learn/session/${id}`); if (current() !== 'learn-chat') go('learn-chat'); else render(); }
+async function openLesson(id) { S.lessonSession = await api.get(`/learn/session/${id}`); if (current() !== 'lesson') go('lesson'); else render(); }
+function learnScreen() {
+  const L = S.learn;
+  if (!L) { loadLearn().catch(fail); return `${header('Learn', {})}<div class="card"><p class="desc">Loading your practice history…</p></div>`; }
+  const st = L.stats, consent = L.consent && L.consent.active ? L.consent : null;
+  const sessionRow = s => row({ icon: CAT_ICON[s.scenario?.category] || 'message', cls: s.outcome === 'caught' ? 'green' : s.outcome ? 'red' : 'amber', title: esc(s.scenario?.brand || s.scenarioId), sub: `${esc(s.scenario?.categoryLabel || '')} · ${s.outcome === 'caught' ? 'You caught it' : s.outcome === 'fell_for_it' ? 'You fell for it' : s.outcome === 'opted_out' ? 'Opted out' : 'In progress'}${s.channel === 'imessage' ? ' · iMessage' : ''}`, meta: ago(Math.round((Date.now() - new Date(s.startedAt)) / 60000)), act: isOver(s) ? 'lesson' : 'session', val: s.id });
+  return `
+  ${header('Learn', { icons: [['search', 'sheet', 'detect']] })}
+  <p class="subhead">Practice spotting scams before a real one finds you</p>
+  <div class="card magenta"><div class="eyebrow">Safe Signal practice</div><div class="big">${consent ? 'Scam practice is on' : 'Train your scam radar'}</div>
+    <p class="desc">${consent ? `Realistic practice texts arrive ${consent.channel === 'imessage' ? 'on your phone over iMessage' : 'in the app'}. Nothing you say leaves the sandbox.` : 'Get realistic fake scam texts in a safe sandbox, then a lesson on what to watch for.'}</p>
+    <div class="proto-stats" style="border-top-color:rgba(255,255,255,.3)"><div class="st"><div class="n">${st.total}</div><div class="l">Sessions</div></div><div class="st"><div class="n">${st.caught}</div><div class="l">Caught</div></div><div class="st"><div class="n" style="font-size:15px;line-height:1.4">${esc(st.weakestLabel || '—')}</div><div class="l">Weak spot</div></div></div>
+    ${consent ? '' : `<div class="btn-row"><button class="btn white" data-act="sheet" data-val="optin">Start scam practice</button></div>`}</div>
+  ${L.active ? `<button class="card tint" data-act="session" data-val="${L.active.id}" style="width:100%"><div class="head"><div class="ico">${ico('message')}</div><div><div class="lbl">Practice in progress</div><div class="big" style="font-size:18px">${esc(L.active.scenario?.brand || '')} is texting you</div></div></div><div class="cta"><span>Continue the conversation</span>${ico('chevR')}</div></button>` : ''}
+  ${consent ? `<h2 class="section">Quick actions</h2>
+  <div class="tiles">${tile('message', 'Practice now', 'practice', 'simulator', true)}${tile('phone', 'Text my phone', 'practice', 'imessage')}${tile('search', 'Check a text', 'sheet', 'detect')}${tile('settings', 'Preferences', 'sheet', 'optin')}</div>
+  <h2 class="section">Pick a scenario</h2>
+  <div class="chips">${L.categories.map(c => `<button class="chip ${S.pickCategory === c.id ? 'on' : ''}" data-act="pickCat" data-val="${c.id}">${c.label}</button>`).join('')}</div>
+  <p class="note">${S.pickCategory ? 'Next practice will use this category. Tap again to clear.' : 'Leave unselected and we pick from your interests, avoiding recent repeats.'}</p>` : ''}
+  ${L.skills.length ? `<h2 class="section">Your scam radar</h2><div class="card">${L.skills.sort((a, b) => a.score - b.score).map(k => `<div class="skill"><div class="row-top"><span>${esc(k.label)}</span><span class="muted">${k.caught}/${k.encountered} caught</span></div><div class="bar"><div class="fill ${k.score >= .67 ? 'good' : k.score >= .34 ? 'mid' : 'low'}" style="width:${Math.max(6, Math.round(k.score * 100))}%"></div></div></div>`).join('')}<p class="note">Scored per red-flag type across your sessions. The weakest one drives the next scenario.</p></div>` : ''}
+  <h2 class="section">Recent practice</h2>
+  <div class="card flush">${L.sessions.length ? L.sessions.slice(0, 8).map(sessionRow).join('') : emptyHtml('No practice sessions yet', 'message')}</div>
+  <p class="note">Practice texts are clearly marked as training the moment you tap a link or share anything sensitive. Your replies are redacted before storage and never quoted back verbatim.</p>`;
+}
+function learnChatScreen() {
+  const s = S.session;
+  if (!s) return `${header('Practice', { back: true })}<div class="card"><p class="desc">Loading…</p></div>`;
+  const over = isOver(s);
+  const msgs = s.messages.map(m => m.role === 'system' ? `<div class="sysnote">${esc(m.text)}</div>` : `<div class="msg ${m.role === 'user' ? 'me' : 'them'}"><div class="by">${m.role === 'user' ? 'You' : esc(s.scenario?.brand || 'Unknown')}</div>${linkify(m.text, s)}</div>`).join('');
+  return `
+  ${header(esc(s.scenario?.brand || 'Practice'), { back: true, icons: over ? [['flag', 'lesson', s.id]] : [] })}
+  <div class="banner">${ico('info')}<div><b>Sandbox.</b> This is a Safe Signal practice text${s.channel === 'imessage' ? ', mirrored from your iMessage thread' : ''}. Reply like you would to a real text.</div></div>
+  <div class="chat">${msgs}</div>
+  ${over ? `<div class="card ${s.outcome === 'caught' ? 'tint' : ''}"><div class="big" style="font-size:18px">${s.outcome === 'caught' ? '🎉 You caught it' : s.outcome === 'fell_for_it' ? '🛑 This was a practice scam' : 'Session ended'}</div><p class="desc">${s.outcome === 'caught' ? 'You called it out before sharing anything.' : 'Nothing was shared with anyone. See what gave it away.'}</p><div class="btn-row"><button class="btn primary" data-act="lesson" data-val="${s.id}">See your lesson</button></div></div>`
+        : `<div class="quick"><button class="chip" data-act="quick" data-val="This is a scam, I'm blocking you">This is a scam</button><button class="chip" data-act="quick" data-val="Ok, how do I fix it?">Ok, how?</button><button class="chip" data-act="quick" data-val="Who is this?">Who is this?</button><button class="chip" data-act="tapLink" data-val="${s.id}">${ico('globe')} Tap the link</button></div>
+           <div class="field">${ico('message')}<input placeholder="Reply as you normally would" data-bind="learnInput" data-enter="sendReply" value="${esc(S.learnInput || '')}"><button class="btn black" data-act="sendReply">Send</button></div>`}`;
+}
+function linkify(text, s) { return esc(text).replace(/https?:\/\/\S+/g, u => `<button class="inline-link" data-act="tapLink" data-val="${s.id}">${u.length > 38 ? u.slice(0, 36) + '…' : u}</button>`); }
+function lessonScreen() {
+  const s = S.lessonSession, L = s && s.lesson;
+  if (!L) return `${header('Your lesson', { back: true })}<div class="card"><p class="desc">${s ? 'The lesson is still being written…' : 'Loading…'}</p></div>`;
+  const caught = L.outcome === 'caught';
+  const replay = L.replay.map(m => `<div class="msg ${m.role === 'user' ? 'me' : 'them'}"><div class="by">${m.role === 'user' ? 'You' : esc(L.scenario?.brand || 'Scammer')}</div>${esc(m.text)}${m.role === 'scammer' && m.redFlags.length ? `<div class="flags">${[...new Map(m.redFlags.map(f => [f.category, f])).values()].map(f => `<span class="badge ${FLAG_CLS[f.category] || ''}" title="${esc(f.explanation)}">${flagLabel(f.category)}</span>`).join('')}</div><div class="why">${[...new Map(m.redFlags.map(f => [f.category, f])).values()].map(f => `<div>• ${esc(f.explanation)}</div>`).join('')}</div>` : ''}</div>`).join('');
+  return `
+  ${header('Your lesson', { back: true })}
+  <div class="card ${caught ? 'tint' : 'dark'}"><div class="eyebrow">${esc(L.scenario?.categoryLabel || '')} · ${esc(L.scenario?.brand || '')}</div><div class="big">${caught ? '🎉 Great job, you caught it' : '🛑 You fell for this one'}</div><p class="desc">${caught ? 'You spotted the red flags and refused to play along.' : 'It happens to everyone. Here is what to watch for next time.'}</p></div>
+  <h2 class="section">Replay with red flags</h2>
+  <div class="chat replay">${replay}</div>
+  <h2 class="section">${L.mistakes.length ? 'Your key mistakes' : 'No major mistakes'}</h2>
+  ${L.mistakes.length ? `<div class="card">${L.mistakes.map(m => `<div class="feat">${ico('alert')}<span>${esc(m)}</span></div>`).join('')}</div>` : ''}
+  <h2 class="section">What you did well</h2>
+  <div class="card">${L.strengths.map(m => `<div class="feat">${ico('checkCircle')}<span>${esc(m)}</span></div>`).join('')}</div>
+  <div class="card magenta"><div class="eyebrow">Rule to remember</div><div class="big" style="font-size:19px">${esc(L.ruleToRemember)}</div></div>
+  <h2 class="section">Protect yourself now</h2>
+  <div class="card flush">
+    ${row({ icon: 'shieldCheck', cls: 'magenta', title: 'Turn on Scam Block', sub: S.toggles.scamBlock ? 'Already on for this line' : 'Stop Scam Likely calls before they ring', act: 'lessonGo', val: 'scamshield' })}
+    ${row({ icon: 'voicemail', cls: 'amber', title: 'Block spam categories', sub: 'Send telemarketing and surveys to voicemail', act: 'lessonGo', val: 'categories' })}
+    ${row({ icon: 'flag', cls: 'red', title: 'Report a real scam text', sub: 'Forward it to 7726 or text it to ScamShield', act: 'sheet', val: 'report' })}
+    ${row({ icon: 'message', cls: 'blue', title: 'Practice again', sub: `Next focus: ${esc(L.nextWeakLabel || 'urgency')}`, act: 'practice', val: 'simulator' })}
+  </div>`;
+}
+function optinSheet() {
+  const o = S.optin;
+  return `<div class="title">Scam practice preferences</div><div class="sub">Safe Signal sends realistic practice scams. Replies are redacted before storage and nothing is ever shared.</div>
+    <div class="rows-title" style="padding-left:0">Where to practice</div>
+    <button class="radio ${o.channel === 'simulator' ? 'on' : ''}" data-act="optChannel" data-val="simulator"><span class="r"></span>In the app (sandbox chat)</button>
+    <button class="radio ${o.channel === 'imessage' ? 'on' : ''}" data-act="optChannel" data-val="imessage"><span class="r"></span>On my phone over iMessage <span class="badge magenta" style="margin-left:6px">Photon</span></button>
+    <div class="rows-title" style="padding-left:0;margin-top:8px">Interests</div>
+    <div class="chips" style="margin:0 0 8px;flex-wrap:wrap">${INTERESTS.map(([id, l]) => `<button class="chip ${o.interests.includes(id) ? 'on' : ''}" data-act="optInterest" data-val="${id}">${l}</button>`).join('')}</div>
+    <p class="note">You can opt out any time here or by texting STOP PRACTICE. Max 5 practice texts per day; none during quiet hours.</p>
+    <div class="btn-row"><button class="btn primary" data-act="optinSave">${S.learn?.consent?.active ? 'Save preferences' : 'Enable practice'}</button></div>
+    ${S.learn?.consent?.active ? `<button class="btn ghost" data-act="optout">Turn practice off</button>` : ''}`;
+}
+function detectSheet() {
+  const r = S.detectRes;
+  return `<div class="title">Check a text</div><div class="sub">Paste a message you received. Rules plus Gemini score it in a second.</div>
+    <textarea class="area" placeholder="Paste the text here" data-bind="detectText">${esc(S.detectText || '')}</textarea>
+    <div class="btn-row"><button class="btn primary" data-act="detect">Check it</button></div>
+    ${r ? `<div class="card" style="margin-top:14px"><span class="badge ${r.label === 'scam' ? 'red' : r.label === 'suspicious' ? 'amber' : 'green'}">${r.label.replace('_', ' ')}</span> <span class="muted" style="font-size:13px">confidence ${Math.round(r.confidence * 100)}%</span>
+      ${r.reasons.slice(0, 4).map(x => `<div class="feat">${ico('alert')}<span>${esc(x)}</span></div>`).join('')}<p class="note">${r.label === 'likely_safe' ? 'Nothing stood out, but verify through the official app if it asks you to act.' : 'Do not tap links or reply. Forward it to 7726 to report it to T-Mobile.'}</p></div>` : ''}`;
+}
+
 /* ---------- render ---------- */
-const TABS = [['home', 'Home', 'home'], ['shop', 'Shop', 'shop'], ['benefits', 'Benefits', 'gift'], ['services', 'Services', 'grid'], ['account', 'Account', 'user']];
-const SCREENS = { home: homeScreen, shop: shopScreen, benefits: benefitsScreen, services: servicesScreen, account: accountScreen, scamshield: scamshieldScreen, activity: activityScreen, lookup: lookupScreen, blocklist: () => listScreen('blocklist'), allowlist: () => listScreen('allowlist'), categories: categoriesScreen, 'ss-settings': settingsScreen, family: familyScreen };
+const TABS = [['home', 'Home', 'home'], ['learn', 'Learn', 'book'], ['benefits', 'Benefits', 'gift'], ['services', 'Services', 'grid'], ['account', 'Account', 'user']];
+const SCREENS = { home: homeScreen, shop: shopScreen, learn: learnScreen, 'learn-chat': learnChatScreen, lesson: lessonScreen, benefits: benefitsScreen, services: servicesScreen, account: accountScreen, scamshield: scamshieldScreen, activity: activityScreen, lookup: lookupScreen, blocklist: () => listScreen('blocklist'), allowlist: () => listScreen('allowlist'), categories: categoriesScreen, 'ss-settings': settingsScreen, family: familyScreen };
 function render(resetScroll) {
   const content = document.getElementById('content'), tabbar = document.getElementById('tabbar');
   if (!S.ready) {
@@ -475,6 +566,8 @@ function renderOverlay() {
     if (name === 'detail') { const a = findAct(data); inner = a ? detailSheet(a) : ''; }
     if (name === 'report') inner = reportSheet(data);
     if (name === 'premium') inner = premiumSheet();
+    if (name === 'optin') inner = optinSheet();
+    if (name === 'detect') inner = detectSheet();
     sh = `<div class="backdrop" data-act="close"><div class="sheet" data-stop="1"><div class="grab"></div>${inner}</div></div>`;
   }
   if (sh !== last.sheet) {
@@ -530,6 +623,26 @@ document.addEventListener('click', e => {
       .then(() => loadAll()).then(() => { closeSheet(); toast('ScamShield Premium removed'); render(); }).catch(fail),
     lookup: () => doLookup(S.lookupQ), lookupRecent: () => { S.lookupQ = v; doLookup(v); },
     toast: () => toast(v), noop: () => {},
+    /* Learn tab */
+    pickCat: () => { S.pickCategory = S.pickCategory === v ? null : v; render(); },
+    practice: () => {
+      if (!S.learn?.consent?.active) return openSheet('optin');
+      const cat = S.pickCategory; const body = { channel: v || 'simulator' };
+      api.get('/learn/scenarios').then(all => { if (cat) { const pool = all.filter(x => x.category === cat); body.scenarioId = pool[Math.floor(Math.random() * pool.length)]?.id; } return api.post(`/learn/${L.lineId}/practice`, body); })
+        .then(s => { closeSheet(); if (s.channel === 'imessage') toast(s.sent?.delivered ? 'Practice text sent to your phone' : `Could not text your phone: ${s.sent?.reason || 'unknown'}`); S.session = s; go('learn-chat'); loadLearn().catch(() => {}); })
+        .catch(e => { if (/in progress/.test(e.message)) { toast('Finish the current practice first'); } else fail(e); });
+    },
+    session: () => openSession(v).catch(fail),
+    lesson: () => openLesson(v).catch(fail),
+    lessonGo: () => { S.stack = []; S.tab = 'home'; go(v); },
+    quick: () => { S.learnInput = v; document.querySelector('[data-act="sendReply"]')?.click(); },
+    sendReply: () => { const t = (S.learnInput || '').trim(); if (!t || !S.session) return; S.learnInput = ''; S.session.messages.push({ id: 'tmp', role: 'user', text: t, redFlags: [] }); render(); api.post(`/learn/session/${S.session.id}/reply`, { text: t }).then(s => { S.session = s; render(); if (isOver(s)) loadLearn().catch(() => {}); }).catch(fail); },
+    tapLink: () => api.post(`/learn/session/${v}/click`).then(s => { S.session = s; render(); loadLearn().catch(() => {}); toast('That link was the trap. Opening your lesson…'); setTimeout(() => openLesson(s.id).catch(fail), 900); }).catch(fail),
+    optChannel: () => { S.optin.channel = v; renderOverlay(); },
+    optInterest: () => { const i = S.optin.interests; S.optin.interests = i.includes(v) ? i.filter(x => x !== v) : [...i, v]; renderOverlay(); },
+    optinSave: () => api.post(`/learn/${L.lineId}/optin`, { channel: S.optin.channel, interests: S.optin.interests, maxPerDay: 5 }).then(o => { S.learn = o; closeSheet(); toast(S.optin.channel === 'imessage' ? 'Practice on. Text the ScamShield number once if you have not yet.' : 'Scam practice is on'); render(); }).catch(fail),
+    optout: () => api.del(`/learn/${L.lineId}/optin`).then(() => { closeSheet(); toast('Practice turned off'); return loadLearn(); }).catch(fail),
+    detect: () => { const t = (S.detectText || '').trim(); if (!t) return toast('Paste a message first'); api.post('/learn/detect', { text: t, senderKnown: false }).then(r => { S.detectRes = r; renderOverlay(); }).catch(fail); },
     reset: () => { localStorage.removeItem(KEY); location.reload(); },
   };
   (A[act] || (() => {}))();
@@ -548,6 +661,17 @@ async function boot() {
     activity: a => { if (a.line !== curLine().lineId) return; S.activity = [a, ...S.activity.filter(x => x.id !== a.id && !(x.e164 === a.e164 && x.type === a.type))]; refreshStats().catch(() => render()); },
     line: l => { const L = LINES.find(x => x.lineId === l.id); if (L) { L.toggles = l.toggles; if (L === curLine()) { S.toggles = l.toggles; render(); } } },
     lists: () => refreshLists().catch(() => {}),
+    learn: ev => {
+      if (S.session && ev.sessionId === S.session.id) {
+        if (ev.message && !S.session.messages.some(m => m.id === ev.message.id)) { S.session.messages = S.session.messages.filter(m => m.id !== 'tmp'); S.session.messages.push(ev.message); }
+        if (ev.state) api.get(`/learn/session/${S.session.id}`).then(s => { S.session = s; render(); }).catch(() => {});
+        render();
+      }
+      if (ev.state && current() === 'learn') loadLearn().catch(() => {});
+    },
   });
+  // Deep link from a practice text: /?lesson=<sessionId>
+  const want = new URLSearchParams(location.search).get('lesson');
+  if (want) { history.replaceState(null, '', location.pathname); S.tab = 'learn'; S.stack = []; render(true); openLesson(want).catch(fail); }
 }
 boot();

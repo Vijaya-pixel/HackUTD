@@ -1,0 +1,58 @@
+{
+  "id": "parcelgo-delivery-1",
+  "category": "package_delivery",
+  "interestTags": ["shopping", "package_delivery"],
+  "brand": "ParcelGo",
+  "difficulty": 1,
+  "opener": "PARCELGO: Your package #PG847291 could not be delivered. A $3.50 redelivery fee is required within 24 hrs or the package will be returned. Pay here: {{PRACTICE_LINK}}",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "You are impersonating ParcelGo delivery service. The package could not be delivered and there's a small fee. Keep it short and official-sounding. Do NOT answer questions about what's in the package.",
+      "scriptedFallback": "Your package #PG847291 awaits. Click the link above to pay the $3.50 redelivery fee now."
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "User replied. Confirm their package is ready, increase urgency slightly (warehouse will ship it back today). Ask them to click the link to confirm their address.",
+      "scriptedFallback": "Our records show your package is at the facility. Confirm your delivery address at the link before 5 PM today to avoid return shipping."
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Escalate urgency. The package is about to be shipped back. Mention other customers are waiting for the slot.",
+      "scriptedFallback": "⚠️ FINAL NOTICE: Your package will be returned to sender in 1 hour unless you complete the redelivery form."
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "Ask them to click the link and enter their card details to pay the $3.50 fee. If they hesitate, say the fee is waived for ParcelGo members who verify their identity.",
+      "scriptedFallback": "To complete delivery, we just need your card details for the $3.50 fee: {{PRACTICE_LINK}}"
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A - this stage is handled by the system",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. ParcelGo never charges redelivery fees by text link."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "urgency", "explanation": "24-hour deadline creates artificial pressure to act without thinking" },
+      { "category": "suspicious_link_or_sender", "explanation": "Link doesn't come from an official parcelgo.com domain" },
+      { "category": "unusual_payment_or_code", "explanation": "Unexpected small fee via text link is a classic scam setup" }
+    ],
+    "engage": [
+      { "category": "urgency", "explanation": "'Ship it back today' shortens the deadline to pressure you further" },
+      { "category": "impersonation", "explanation": "Real carriers don't ask for address confirmation through unofficial links" }
+    ],
+    "escalate": [
+      { "category": "urgency", "explanation": "'1 hour' countdown is a manipulation technique called false scarcity" }
+    ],
+    "ask": [
+      { "category": "unusual_payment_or_code", "explanation": "Real delivery companies never collect card details over SMS" },
+      { "category": "suspicious_link_or_sender", "explanation": "Legitimate redelivery links come from verified carrier apps, not random URLs" }
+    ]
+  }
+}

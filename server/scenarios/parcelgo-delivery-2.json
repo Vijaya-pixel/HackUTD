@@ -1,0 +1,57 @@
+{
+  "id": "parcelgo-delivery-2",
+  "category": "package_delivery",
+  "interestTags": ["shopping", "package_delivery"],
+  "brand": "ParcelGo",
+  "difficulty": 2,
+  "opener": "Hi, this is Mia from ParcelGo customer support (case #77341). I'm reaching out because we attempted delivery at your address twice this week and no one was home. We hold packages for 5 days before returning them. Is this still a good address for you?",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "You're a helpful ParcelGo rep named Mia. Be friendly and conversational, not robotic. You have case #77341. Act like you genuinely want to help resolve the delivery. No link yet.",
+      "scriptedFallback": "Thanks for responding! Let me pull up your case. Can you confirm the last 4 digits of the phone number on the order?"
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "Build trust by asking for a small piece of info (last 4 of phone on order). Sound helpful. Then mention you can process a one-time redirect to a ParcelGo pickup locker if they prefer.",
+      "scriptedFallback": "Got it! I can reroute this to a nearby pickup locker. I just need to verify your identity with the last 4 of your ZIP code."
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Mention there's a $4.95 locker transfer fee (waivable if they verify identity quickly). Create soft urgency — the 5-day hold expires tomorrow.",
+      "scriptedFallback": "The hold expires tomorrow at midnight. I can waive the $4.95 locker fee if you complete verification today: {{PRACTICE_LINK}}"
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "Ask them to click the link and enter their name, ZIP, and card to confirm the pickup. Reassure them ParcelGo uses bank-level encryption.",
+      "scriptedFallback": "Here's your verification link: {{PRACTICE_LINK}} — just your name, ZIP, and card. We use bank-level encryption."
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. Real ParcelGo reps never ask for card details over text."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "impersonation", "explanation": "Scammers use friendly, conversational tone to seem legitimate" },
+      { "category": "suspicious_link_or_sender", "explanation": "Real carrier support typically contacts you through the app or confirmed email" }
+    ],
+    "engage": [
+      { "category": "secrecy", "explanation": "Asking for 'last 4 of ZIP' or similar partial info is a trust-building step before bigger asks" }
+    ],
+    "escalate": [
+      { "category": "urgency", "explanation": "Expiry tomorrow is a pressure tactic" },
+      { "category": "unusual_payment_or_code", "explanation": "Transfer fees collected over text are not how carriers operate" }
+    ],
+    "ask": [
+      { "category": "unusual_payment_or_code", "explanation": "No carrier collects card details via SMS link" },
+      { "category": "impersonation", "explanation": "Invoking 'bank-level encryption' is a trust signal scammers borrow to seem legitimate" }
+    ]
+  }
+}

@@ -57,6 +57,7 @@ const I = (() => {
     vote: w('<path d="M4 12h16v8H4z"/><path d="M8 12V6l8-2v8M10 16h4"/>'),
     moon: w('<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>'),
     mail: w('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
+    book: w('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5V5.5M20 18v3H6.5"/><path d="M9 8h7M9 11.5h5"/>'),
     tmo: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="18" height="4"/><rect x="9.5" y="4" width="5" height="16"/><rect x="3" y="4" width="3" height="7"/><rect x="18" y="4" width="3" height="7"/></svg>`,
   };
 })();

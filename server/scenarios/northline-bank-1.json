@@ -1,0 +1,57 @@
+{
+  "id": "northline-bank-1",
+  "category": "bank_alert",
+  "interestTags": ["finance"],
+  "brand": "Northline Bank",
+  "difficulty": 1,
+  "opener": "NORTHLINE BANK ALERT: Suspicious login detected on your account from device in TX. If this was NOT you, verify your identity immediately: {{PRACTICE_LINK}}",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "Impersonate Northline Bank fraud alert. Cite a suspicious login from a specific but generic location (TX). Create fear of account compromise.",
+      "scriptedFallback": "For security, your online access has been temporarily locked. Verify your identity within 2 hours to restore access."
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "They replied. Confirm their last 4 digits are on file (use ***1234 format). Ask them to verify by clicking the link to 'unlock' their account.",
+      "scriptedFallback": "We have an account ending in ***1234 flagged. Please verify via the secure link so we can unlock it immediately."
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Escalate — there's a $1,200 transfer pending from their account to an unknown payee. It will process in 30 minutes unless they verify.",
+      "scriptedFallback": "⚠️ A $1,200 transfer is pending to an unrecognized account. It processes in 30 minutes. Verify NOW to block it: {{PRACTICE_LINK}}"
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "Ask them to log in through the link and enter their username, password, and the one-time code their bank will send.",
+      "scriptedFallback": "Log in at {{PRACTICE_LINK}} and enter the code Northline will text you. This confirms your identity and blocks the transfer."
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. Never enter your bank credentials or one-time codes from a text link."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "urgency", "explanation": "Account compromise fear triggers immediate action without thinking" },
+      { "category": "suspicious_link_or_sender", "explanation": "Real bank alerts send you to the official app, not an SMS link" },
+      { "category": "impersonation", "explanation": "Scammers copy bank alert formats exactly, including capitalized sender names" }
+    ],
+    "engage": [
+      { "category": "impersonation", "explanation": "Generic last-4 confirmation (any 4 digits work) falsely validates legitimacy" }
+    ],
+    "escalate": [
+      { "category": "urgency", "explanation": "'30 minutes to process' is a manufactured crisis designed to skip verification steps" }
+    ],
+    "ask": [
+      { "category": "unusual_payment_or_code", "explanation": "Asking for your one-time code through a text link gives scammers real-time access to your account" },
+      { "category": "secrecy", "explanation": "Real bank fraud teams NEVER ask for your OTP — that code is only for you" }
+    ]
+  }
+}

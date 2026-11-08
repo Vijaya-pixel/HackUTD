@@ -12,6 +12,7 @@ import { subscribe, publish, clientCount } from './sse.js';
 import { startPhoton, sendToLine, getOutbox, photonEnabled, photonStatus } from './photon.js';
 import { llmEnabled } from './llm.js';
 import { registerTwilio, attachMediaServer, hangupTwilio, sayAndHangup, forwardTarget, twilioEnabled } from './twilio.js';
+import { registerLearn, setPhotonSender } from './learn.js';
 
 const app = new Hono();
 app.use('/api/*', cors());
@@ -322,6 +323,10 @@ app.get('/api/photon/outbox', c => c.json(getOutbox()));
 app.post('/api/photon/send', async c => { const { lineId = 'line_0', text } = await c.req.json(); if (!text) return bad(c, 'text required'); return c.json(await sendToLine(lineId, text, { kind: 'manual' })); });
 app.post('/webhooks/photon', c => c.json({ ok: true, note: 'inbound messages are consumed over the spectrum-ts stream; webhook not used' }));
 startPhoton();
+
+/* ---------- Learn tab (Safe Signal practice) ---------- */
+registerLearn(app);
+setPhotonSender(sendToLine);
 
 /* ---------- Twilio (real calls) ---------- */
 const callDeps = { incomingCall, addTranscript, endCall, live, getLine, publish };
