@@ -508,8 +508,7 @@ function learnScreen() {
   ${header('Learn', { icons: [['clipboard', 'sheet', 'stats'], ['settings', 'sheet', 'optin']] })}
   ${S.trap ? trapCard(S.trap) : ''}
   ${L?.active ? `<button class="card practice-live" data-act="session" data-val="${L.active.id}" style="width:100%"><div class="between"><div><div class="eyebrow">Practice text in progress</div><div class="big" style="font-size:18px">${esc(L.active.scenario?.brand && L.active.scenario.brand !== 'none' ? L.active.scenario.brand : 'Someone')} is texting you</div></div>${ico('chevR')}</div></button>` : ''}
-  ${questMap()}
-  <p class="note">Each stop is a different scam, played rather than read. Clear a stop with half or more to unlock the next. Wins give Buddy +8 energy, losses cost 5. Field test sends a real practice text to your phone.</p>`;
+  ${questMap()}`;
 }
 /* Stats sheet: the dashboard that used to be the Learn page */
 function statsSheet() {
