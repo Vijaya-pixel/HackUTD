@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
-import { mkdirSync } from "fs";
+import { mkdirSync, readFileSync } from "fs";
 import * as schema from "./schema.js";
 
 /**
@@ -22,6 +22,7 @@ export interface DbInfo {
   driver: "tigerdata" | "pglite";
   hypertable: boolean;
   host?: string;
+  ssl?: "verify-ca" | "system-ca" | "off";
 }
 
 let _db: Db | null = null;
@@ -49,13 +50,27 @@ async function init(): Promise<Db> {
     const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(host);
     const sslEnv = process.env["DATABASE_SSL"];
     const ssl = sslEnv ? sslEnv !== "false" : !isLocal;
+    // Tiger Cloud signs its servers with a private CA (CN=ca.timescale.com) that is
+    // not in Node's bundled trust store. Point DATABASE_SSL_CA at the CA .pem from
+    // the Tiger Cloud console to verify the chain properly instead of disabling it.
+    const caPath = process.env["DATABASE_SSL_CA"];
+    const ca = caPath ? readFileSync(caPath, "utf8") : undefined;
+    // `pg` lets sslmode=... in the URL override an explicit `ssl` object, which
+    // would drop our pinned CA. Strip the libpq-only params and configure SSL here.
+    const cleaned = new URL(url);
+    for (const k of ["sslmode", "sslrootcert", "sslcert", "sslkey", "uselibpqcompat"]) cleaned.searchParams.delete(k);
     const pool = new Pool({
-      connectionString: url,
-      ssl: ssl ? { rejectUnauthorized: process.env["DATABASE_SSL_STRICT"] !== "false" } : undefined,
+      connectionString: cleaned.toString(),
+      ssl: ssl
+        ? {
+            ca,
+            rejectUnauthorized: process.env["DATABASE_SSL_STRICT"] !== "false",
+          }
+        : undefined,
       max: Number(process.env["DATABASE_POOL_MAX"] ?? 5),
     });
     db = drizzle(pool, { schema }) as unknown as Db;
-    _info = { driver: "tigerdata", hypertable: false, host };
+    _info = { driver: "tigerdata", hypertable: false, host, ssl: ssl ? (ca ? "verify-ca" : "system-ca") : "off" };
   } else {
     const { PGlite } = await import("@electric-sql/pglite");
     const { drizzle } = await import("drizzle-orm/pglite");

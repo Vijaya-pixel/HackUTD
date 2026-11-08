@@ -9,3 +9,6 @@ data/
 .turbo/
 coverage/
 *.tsbuildinfo
+
+# local secrets / notes
+*credentials*.txt

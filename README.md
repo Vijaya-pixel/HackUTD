@@ -70,7 +70,7 @@ Postgres everywhere, via Drizzle ORM:
 Set up TigerData:
 
 1. Create a free service at https://console.cloud.timescale.com (Tiger Cloud).
-2. Copy the connection string and put it in `apps/server/.env` as `DATABASE_URL=postgres://tsdbadmin:...@...tsdb.cloud.timescale.com:.../tsdb?sslmode=require`.
+2. Copy the connection string and put it in `apps/server/.env` as `DATABASE_URL=postgres://tsdbadmin:...@...tsdb.cloud.timescale.com:.../tsdb?sslmode=require`. Keep `DATABASE_SSL_CA=./certs/timescale-ca.pem`: Tiger Cloud uses a private CA (see `apps/server/certs/README.md`), and that file lets the driver verify the chain and hostname.
 3. `pnpm seed` then `pnpm dev:server`. The startup log prints `DB: tigerdata (...)  |  hypertable: yes`, and `GET /health` reports the same under `db`.
 
 Tables are created on startup (`apps/server/src/db/client.ts`); schema lives in `apps/server/src/db/schema.ts`.
