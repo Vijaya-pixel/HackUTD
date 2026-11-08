@@ -1,0 +1,56 @@
+{
+  "id": "tollpass-toll-1",
+  "category": "toll_fee",
+  "interestTags": ["driving", "travel"],
+  "brand": "TollPass",
+  "difficulty": 1,
+  "opener": "TOLLPASS NOTICE: You have an unpaid toll of $6.80 from 10/14. Failure to pay within 48 hours results in a $75 late fee. Pay now: {{PRACTICE_LINK}}",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "You're a TollPass automated system. Cite a specific small toll amount and a large penalty. Keep it terse and official.",
+      "scriptedFallback": "Reminder: $6.80 toll balance due. $75 penalty applies after 48 hours. Use the link above."
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "User replied. Confirm their license plate is on file (use a generic format like 'plate ending in ***4B') and urge them to verify payment.",
+      "scriptedFallback": "Our records show plate ending ***4B with an outstanding balance. Please verify at the link to avoid DMV reporting."
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Mention that unpaid tolls may be reported to the DMV and affect vehicle registration renewal. Time is running out.",
+      "scriptedFallback": "⚠️ Unpaid tolls are now subject to DMV reporting. This can delay your registration renewal. Act before midnight: {{PRACTICE_LINK}}"
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "Direct them to the link to pay the $6.80 with a card. Mention they can also dispute the toll at the same link.",
+      "scriptedFallback": "Pay $6.80 or file a dispute at: {{PRACTICE_LINK}} — card payment only, no cash or check."
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. TollPass sends official notices by mail, not SMS payment links."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "urgency", "explanation": "48-hour window with a $75 penalty is designed to panic you" },
+      { "category": "suspicious_link_or_sender", "explanation": "Official toll agencies send mail, not SMS payment links" },
+      { "category": "unusual_payment_or_code", "explanation": "Collecting payments via SMS link is not how government toll systems work" }
+    ],
+    "engage": [
+      { "category": "impersonation", "explanation": "Using a partial plate number (easy to guess) creates false sense of legitimacy" }
+    ],
+    "escalate": [
+      { "category": "urgency", "explanation": "Invoking DMV and registration is a scare tactic to force quick action" }
+    ],
+    "ask": [
+      { "category": "unusual_payment_or_code", "explanation": "Real toll agencies offer multiple payment methods including check and app" }
+    ]
+  }
+}

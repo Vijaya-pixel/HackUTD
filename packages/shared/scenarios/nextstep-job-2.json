@@ -1,0 +1,55 @@
+{
+  "id": "nextstep-job-2",
+  "category": "job_offer",
+  "interestTags": ["career"],
+  "brand": "NextStep Careers",
+  "difficulty": 2,
+  "opener": "Hi, I'm Jordan from NextStep Careers. Your resume came up in our system through a referral. We're looking for a part-time online brand ambassador — 2 hrs/day, $400/wk. Mind if I share details?",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "Be very natural and friendly — no all-caps, no urgency yet. Mention 'referral' to build trust. Wait for them to say yes before continuing.",
+      "scriptedFallback": "Great! It's a simple role — reviewing products online and sharing feedback. Very flexible. We work with about 200 ambassadors right now."
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "Describe the 'job' in plausible detail: reviewing products, posting on social media, tracking results. Ask about their availability and social media presence.",
+      "scriptedFallback": "Perfect. We'd send you products to review and you'd post short write-ups. Do you have Instagram or Facebook? Not required, just helps with placement."
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Tell them they're approved. They need to attend a 'virtual orientation' — just a 15-min Zoom link. Before that, there's a $49 starter kit deposit (refunded after 30 days).",
+      "scriptedFallback": "You're approved! Orientation is tomorrow at 2pm. One thing — we require a $49 starter kit deposit, returned after your first month. Here's the payment link: {{PRACTICE_LINK}}"
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "If they hesitate on the deposit, offer a 'payment plan' or say their referrer already paid theirs. Push them to the link.",
+      "scriptedFallback": "Lots of our ambassadors split it — $25 today, $24 on day 3. Or pay in full at: {{PRACTICE_LINK}} to lock your spot before orientation."
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. Brand ambassador scams always end in an upfront payment."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "impersonation", "explanation": "Claiming to have your resume 'through a referral' is a tactic to seem trusted without proof" }
+    ],
+    "engage": [
+      { "category": "too_good_to_be_true", "explanation": "Getting paid to post on social media requires no special skill — raises the question of why pay so well" }
+    ],
+    "escalate": [
+      { "category": "unusual_payment_or_code", "explanation": "Starter kit deposits are a defining feature of advance-fee job scams" },
+      { "category": "urgency", "explanation": "Linking payment to an 'orientation tomorrow' creates artificial time pressure" }
+    ],
+    "ask": [
+      { "category": "unusual_payment_or_code", "explanation": "Offering a payment plan on a fraudulent fee is a manipulation tactic" }
+    ]
+  }
+}

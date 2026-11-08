@@ -1,0 +1,55 @@
+{
+  "id": "family-emergency-2",
+  "category": "family_emergency",
+  "interestTags": ["family"],
+  "brand": "none",
+  "difficulty": 2,
+  "opener": "Hey — new number, lost the old one. Everything okay on your end? Just wanted to check in.",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "Start completely casual — no emergency yet. Build rapport by asking how they're doing. Let them assume who you are based on their response. Mirror their tone.",
+      "scriptedFallback": "Yeah things have been hectic. Actually I'm dealing with something — can I be honest with you?"
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "Reveal a 'situation' gradually. You're embarrassed, you've had a rough few weeks, you need help but don't want to alarm anyone. Keep it emotionally real.",
+      "scriptedFallback": "I got my wallet stolen at the airport. I'm okay but I'm stuck — my bank account is frozen while they investigate. It's just temporary."
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Ask for a loan — just $200-$500, you'll pay them back as soon as the bank releases your account. Play on guilt and loyalty. Don't mention the link yet.",
+      "scriptedFallback": "I hate asking this but could you lend me $400? Just until the bank sorts this out. I'd use a card but everything is frozen."
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "Direct them to the link to send via Zelle or Venmo. If they're suspicious, remind them of a shared memory (keep it vague so it could apply to anyone).",
+      "scriptedFallback": "You can send it here: {{PRACTICE_LINK}} — Zelle, Venmo, whatever is easiest. Remember when you helped me move? Same thing — I've got you covered."
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. The gradual build and vague shared memories are classic social engineering."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "impersonation", "explanation": "Waiting for you to assume their identity is a smart technique — you fill in the blank yourself" },
+      { "category": "suspicious_link_or_sender", "explanation": "An unknown number claiming to be someone you know is a major red flag" }
+    ],
+    "engage": [
+      { "category": "secrecy", "explanation": "Frozen bank account is unverifiable and designed to explain why normal channels don't work" }
+    ],
+    "escalate": [
+      { "category": "unusual_payment_or_code", "explanation": "If someone truly had a frozen account, there are official bank channels to access emergency funds" }
+    ],
+    "ask": [
+      { "category": "impersonation", "explanation": "Vague shared memories ('remember when you helped me move?') work because they could apply to anyone" }
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "id": "northline-bank-2",
+  "category": "bank_alert",
+  "interestTags": ["finance"],
+  "brand": "Northline Bank",
+  "difficulty": 2,
+  "opener": "Hi, this is Marcus calling from Northline Bank fraud prevention. I'm reaching out because we flagged unusual activity on an account that may be linked to yours. Do you have a moment?",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "Be professional, slow-paced, and calm — not alarming. You're a bank fraud investigator named Marcus. You're doing them a favor by calling proactively. Build trust before asking anything.",
+      "scriptedFallback": "Thanks for your time. We've seen a pattern of transactions that resembles a fraud ring we're currently investigating. Your account may be connected inadvertently."
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "Walk them through 'recent transactions' on their account (use vague amounts like '$47 at a gas station' that could apply to anyone). Ask them to confirm which ones they recognize.",
+      "scriptedFallback": "I'm seeing $47 at a gas station, $112 at a grocery store, and a $3 subscription charge. Do any of those seem off to you?"
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Tell them one transaction is flagged and an investigation is open. To protect their account, they need to verify their identity using a 'secure token' you'll send them (OTP). Make it sound official.",
+      "scriptedFallback": "I'm going to send a secure verification token to your phone right now. When you receive it, please read it back to me so I can lock the investigation to your account."
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "Ask them to read back the OTP they just received. If they hesitate, explain that it's a 'read-only confirmation token' used by the fraud team, not an access code.",
+      "scriptedFallback": "The token I sent is a one-way confirmation — it only lets me verify your identity, it doesn't give access. What does it say?"
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. Any caller asking for your OTP is a scammer. Hang up and call the number on your card."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "impersonation", "explanation": "Calm, professional tone makes this feel very different from typical scam calls" }
+    ],
+    "engage": [
+      { "category": "impersonation", "explanation": "Generic transactions that apply to almost anyone create false confirmation of legitimacy" }
+    ],
+    "escalate": [
+      { "category": "unusual_payment_or_code", "explanation": "Asking you to read back an OTP is the core of this scam — that code resets or transfers your account" },
+      { "category": "secrecy", "explanation": "Real fraud teams NEVER ask for OTPs — they're only for you to use directly on the bank's website" }
+    ],
+    "ask": [
+      { "category": "unusual_payment_or_code", "explanation": "There is no such thing as a 'read-only confirmation token' — all OTPs grant access" },
+      { "category": "impersonation", "explanation": "Sophisticated social engineering uses technical-sounding explanations to lower your guard" }
+    ]
+  }
+}

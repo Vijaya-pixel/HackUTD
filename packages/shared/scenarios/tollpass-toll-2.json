@@ -1,0 +1,57 @@
+{
+  "id": "tollpass-toll-2",
+  "category": "toll_fee",
+  "interestTags": ["driving", "travel"],
+  "brand": "TollPass",
+  "difficulty": 2,
+  "opener": "Hi! I'm Alex from TollPass Collections (ref #TPC-20481). I'm calling because we've had trouble reaching you about a $12.40 balance from September. I know it's a small amount — just want to help you clear it before it goes to a third-party collections agency. Can you spare 2 minutes?",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "Be friendly, non-threatening, helpful. You're trying to do them a favor by keeping it out of collections. Don't mention the link yet. Build rapport.",
+      "scriptedFallback": "I totally understand — these little balances slip through the cracks. I can hold the collections referral if you can clear it today."
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "Ask if they recall driving on a specific highway in September. Sound genuinely curious. If they're unsure, tell them it was likely an E-ZPass lane their transponder didn't read.",
+      "scriptedFallback": "It was likely on I-35 around Sept 8th — transponder sometimes misses reads. Happens all the time. Easy fix!"
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Mention the balance is about to auto-escalate at end of month. You can waive the $35 collections fee today only. Sound like you're bending the rules for them.",
+      "scriptedFallback": "I'm waiving the $35 collections fee for you right now — I just need you to pay the base $12.40 today before the system locks me out."
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "Send the link. Explain it's a secure TollPass portal. Ask for card or bank routing number. If they push back, offer to 'take it verbally' over text.",
+      "scriptedFallback": "Here's the secure portal: {{PRACTICE_LINK}} — or if easier I can note your card number right here in this chat."
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. Never give card numbers over text or through unsolicited links."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "impersonation", "explanation": "Friendly tone and a reference number make this feel very official" },
+      { "category": "urgency", "explanation": "Threat of collections agency is designed to make you act quickly" }
+    ],
+    "engage": [
+      { "category": "impersonation", "explanation": "Specific-sounding but vague details (highway name, date range) are easy to guess and hard to verify" }
+    ],
+    "escalate": [
+      { "category": "urgency", "explanation": "'Today only' waiver is a classic scarcity tactic" },
+      { "category": "secrecy", "explanation": "'Before the system locks me out' implies urgency that can't be verified" }
+    ],
+    "ask": [
+      { "category": "unusual_payment_or_code", "explanation": "Offering to 'take it verbally over text' is designed to bypass your resistance to clicking a link" },
+      { "category": "suspicious_link_or_sender", "explanation": "No legitimate government agency takes card numbers over SMS" }
+    ]
+  }
+}

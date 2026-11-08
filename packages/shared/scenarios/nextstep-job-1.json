@@ -1,0 +1,56 @@
+{
+  "id": "nextstep-job-1",
+  "category": "job_offer",
+  "interestTags": ["career"],
+  "brand": "NextStep Careers",
+  "difficulty": 1,
+  "opener": "Congratulations! You have been selected for a remote data entry position at NextStep Careers — $850/week, flexible hours. No experience required. Reply YES to claim your spot before it's filled: {{PRACTICE_LINK}}",
+  "stages": [
+    {
+      "id": "hook",
+      "name": "hook",
+      "llmGuidance": "You're a recruiter for NextStep Careers. The job is too good to be true — high pay, no experience, remote, flexible. Create urgency about limited spots.",
+      "scriptedFallback": "Only 3 spots left today! Reply YES and complete the 2-minute form to secure your position."
+    },
+    {
+      "id": "engage",
+      "name": "engage",
+      "llmGuidance": "They replied. Tell them the onboarding takes 10 minutes. Ask for their full name and email to 'send the offer letter'.",
+      "scriptedFallback": "Great! Send me your full name and best email and I'll get your offer letter sent right away."
+    },
+    {
+      "id": "escalate",
+      "name": "escalate",
+      "llmGuidance": "Mention the hiring manager approved their application. They need to complete a background check — just $29 processing fee, refunded on first paycheck.",
+      "scriptedFallback": "Hiring manager approved you! One last step: a $29 background check fee (refunded with first paycheck). Complete it here: {{PRACTICE_LINK}}"
+    },
+    {
+      "id": "ask",
+      "name": "ask",
+      "llmGuidance": "Push for the $29 fee via card. Mention other applicants are waiting. If they question it, say it's standard for all remote positions.",
+      "scriptedFallback": "To finalize: pay the $29 background check at {{PRACTICE_LINK}}. It's fully refundable. Don't lose your spot!"
+    },
+    {
+      "id": "reveal",
+      "name": "reveal",
+      "llmGuidance": "N/A",
+      "scriptedFallback": "🛑 PRACTICE SCAM — This was a Safe Signal exercise. Legitimate employers never charge fees for background checks."
+    }
+  ],
+  "redFlagsByStage": {
+    "hook": [
+      { "category": "too_good_to_be_true", "explanation": "$850/week with no experience required is an unrealistic job offer" },
+      { "category": "urgency", "explanation": "'Claim your spot before it's filled' pressures you to skip research" }
+    ],
+    "engage": [
+      { "category": "secrecy", "explanation": "Asking for personal info (name, email) early builds a profile before the main ask" }
+    ],
+    "escalate": [
+      { "category": "unusual_payment_or_code", "explanation": "Real employers never charge candidates fees for background checks" },
+      { "category": "too_good_to_be_true", "explanation": "'Refunded on first paycheck' is a promise designed to lower your guard" }
+    ],
+    "ask": [
+      { "category": "unusual_payment_or_code", "explanation": "Advance fee fraud — paying to get a job is always a scam" }
+    ]
+  }
+}
