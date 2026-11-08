@@ -11,7 +11,7 @@ const PET_LINES = {
   sick: ['Ugh. Too many traps lately. Help me recharge.', 'I need some wins. Try a practice text and catch it.', 'Scam Block and Caller ID would help me recover.'],
   critical: ['I am barely standing. Please do not tap any links.', 'Critical. Every correct answer counts now.', 'Help. Turn protections on and catch the next scam.'],
 };
-const KIND_LABEL = { caught: 'Caught a practice scam', fell: 'Fell for a practice scam', trap: 'Tapped the trap link', quiz_right: 'Quick check answered', quiz_wrong: 'Quick check missed', report: 'Reported a number', bonus: 'Bonus' };
+const KIND_LABEL = { game_win: 'Cleared a Quest stop', game_loss: 'Lost a Quest stop', caught: 'Caught a practice scam', fell: 'Fell for a practice scam', trap: 'Tapped the trap link', quiz_right: 'Quick check answered', quiz_wrong: 'Quick check missed', report: 'Reported a number', bonus: 'Bonus' };
 const TOGGLE_LABEL = { scamBlock: 'Scam Block', callerId: 'Caller ID', screener: 'Call Screener', aiVoice: 'AI voice detection', inCall: 'In-call alerts' };
 const pickLine = arr => arr[Math.floor(Date.now() / 60000) % arr.length];
 const petTimers = {};

@@ -129,14 +129,7 @@ function homeScreen() {
     ${header('Hey, Anne', { brand: true, icons: [['chat', 'toast', 'Messages are not part of this demo'], ['bell', 'toast', 'No new notifications']] })}
     <p class="subhead">See what's new in T Life today</p>
   </div>
-  <button class="card feature lift" data-act="go" data-val="scamshield" style="width:100%">
-    <div class="big">ScamShield: ${st.blocked} calls blocked</div>
-    <p class="desc">Scam Block, Caller ID and AI voice detection are protecting ${LINES.length} lines on your account.</p>
-    <span class="ulink">About ScamShield</span>
-    <div class="stat-dark inset"><div class="st"><div class="n">${st.blocked}</div><div class="l">Blocked this month</div></div><div class="st"><div class="n">${st.flagged}</div><div class="l">Flagged calls</div></div></div>
-    <div class="cta"><span>See ScamShield activity</span>${ico('chevR')}</div>
-  </button>
-  <button class="card magenta tuesdays" data-act="tab" data-val="benefits" style="width:100%"><div class="between"><div><div class="eyebrow">T-Mobile Tuesdays</div><div class="big">This week's thanks</div><p class="desc">Free 7-Eleven coffee, 15¢ off gas at Shell and $5 off Little Caesars.</p></div><div class="tico">${ico('gift')}</div></div></button>
+  <button class="card magenta tuesdays lift" data-act="tab" data-val="benefits" style="width:100%"><div class="between"><div><div class="eyebrow">T-Mobile Tuesdays</div><div class="big">This week's thanks</div><p class="desc">Free 7-Eleven coffee, 15¢ off gas at Shell and $5 off Little Caesars.</p></div><div class="tico">${ico('gift')}</div></div></button>
   ${balanceCard()}
   <h2 class="section">Quick actions</h2>
   <div class="tiles">${tile('dollar', 'Pay bill', 'toast', 'Payments are not part of this demo')}${tile('shield', 'ScamShield', 'go', 'scamshield')}${tile('paw', 'Train with Buddy', 'tab', 'learn')}${tile('upgrade', 'Upgrade', 'toast', 'Shopping is not part of this demo')}${tile('headset', 'Support', 'toast', 'Support chat is not part of this demo')}</div>
@@ -224,15 +217,15 @@ function scamshieldScreen() {
   const acts = lineActivity().filter(matchesFilter).slice(0, 5);
   return `
   ${header('ScamShield', { back: true, icons: [['search', 'go', 'lookup'], ['settings', 'go', 'ss-settings']] })}
-  <div class="card dark">
+  <div class="card status">
     <div class="shield-status"><div class="orb ${on ? '' : 'off'}">${ico(on ? 'shieldCheck' : 'shield')}</div>
       <div><div class="big">${on ? "You're protected" : 'Scam Block is off'}</div><p class="desc" style="margin-top:2px">${on ? `Scam Block is on for ${esc(L.device)}` : `Scam Likely calls will ring through on ${esc(L.device)}`}</p></div></div>
-    <div class="proto-stats"><div class="st"><div class="n">${st.blocked}</div><div class="l">Blocked</div></div><div class="st"><div class="n">${st.flagged}</div><div class="l">Flagged</div></div><div class="st"><div class="n">${st.identified}</div><div class="l">Identified</div></div></div>
-    <div class="note" style="color:rgba(255,255,255,.5)">Last 30 days · Built into the network, no extra app needed</div>
+    <div class="stat-row"><div class="st"><div class="n">${st.blocked}</div><div class="l">Blocked</div></div><div class="st"><div class="n">${st.flagged}</div><div class="l">Flagged</div></div><div class="st"><div class="n">${st.identified}</div><div class="l">Identified</div></div></div>
+    <div class="note">Last 30 days · Built into the network, no extra app needed</div>
   </div>
-  <div class="chips">${LINES.map(l => `<button class="chip ${l.id === S.line ? 'on' : ''}" data-act="line" data-val="${l.id}">${l.name}${l.primary ? ' (you)' : ''}</button>`).join('')}<button class="chip" data-act="go" data-val="family">${ico('users')} Family</button></div>
+  <div class="chips wrap">${LINES.map(l => `<button class="chip ${l.id === S.line ? 'on' : ''}" data-act="line" data-val="${l.id}">${l.name}${l.primary ? ' (you)' : ''}</button>`).join('')}<button class="chip" data-act="go" data-val="family">${ico('users')} Family</button></div>
   <h2 class="section">Quick actions</h2>
-  <div class="tiles">${tile('block', 'Block list', 'go', 'blocklist')}${tile('search', 'Look up', 'go', 'lookup')}${tile('flag', 'Report', 'sheet', 'report')}${tile('checkCircle', 'Allow list', 'go', 'allowlist')}${tile('voicemail', 'Categories', 'go', 'categories')}</div>
+  <div class="tiles wrap">${tile('block', 'Block list', 'go', 'blocklist')}${tile('search', 'Look up', 'go', 'lookup')}${tile('flag', 'Report', 'sheet', 'report')}${tile('checkCircle', 'Allow list', 'go', 'allowlist')}${tile('voicemail', 'Categories', 'go', 'categories')}</div>
   <h2 class="section">Protection</h2>
   <div class="card flush">
     ${toggleRow('scamBlock', 'shieldCheck', 'magenta', 'Scam Block', 'Automatically block Scam Likely calls before your phone rings')}
@@ -248,7 +241,7 @@ function scamshieldScreen() {
   <div class="card"><div class="eyebrow">Try it</div><div class="big" style="font-size:19px">See ScamShield in action</div><p class="desc">Simulate an incoming call on ${esc(L.device)}.</p>
     <div class="pill-demo"><button class="btn outline" data-act="call" data-val="scam">${ico('phoneOff')} Scam Likely call</button><button class="btn outline" data-act="call" data-val="fraud">${ico('sparkles')} AI voice scam</button><button class="btn outline" data-act="call" data-val="screener">${ico('headset')} Screen a call</button></div></div>
   ${S.premium ? '' : premiumCard()}
-  <button class="card" data-act="go" data-val="family" style="width:100%"><div class="head"><div class="ico" style="background:var(--blue)">${ico('users')}</div><div class="big" style="font-size:18px">Protect your whole family</div></div>
+  <button class="card" data-act="go" data-val="family" style="width:100%"><div class="head"><div class="ico neutral">${ico('users')}</div><div class="big" style="font-size:18px">Protect your whole family</div></div>
     <p class="desc">Set up Scam Block and Caller ID for every line on your account in under two minutes. Calls with people they know are never analyzed.</p><div class="cta"><span>Manage family protection</span>${ico('chevR')}</div></button>
   <p class="note">Turning on Scam Block might block calls you want; disable any time. Qualifying service and capable device required.</p>`;
 }
@@ -477,7 +470,7 @@ function callHtml() {
     state = c.remote ? 'Screened by ScamShield · ringing your phone' : 'Screened by ScamShield · incoming call';
     body = screeningCard(c);
     controls = c.remote
-      ? ctl('red', 'phoneOff', 'Decline', 'end') + `<div class="ctl"><div class="c green">${ico('phone')}</div>Answer on your phone</div>`
+      ? `<div class="slide"><div class="knob">${ico('phone')}</div><span>slide to answer on your phone</span></div>`
       : ctl('red', 'phoneOff', 'Decline', 'decline') + ctl('green', 'phone', 'Accept', 'accept');
   }
   else if (c.phase === 'ringing' && c.remote) { state = 'Real call via Twilio · waiting for pickup'; controls = ctl('red', 'phoneOff', 'Cancel', 'end'); }
@@ -494,7 +487,11 @@ function callHtml() {
     body = `<div class="summary"><div class="orb">${ico(byShield ? 'shieldCheck' : 'phoneOff')}</div><h3>${byShield ? 'Call ended by ScamShield' : 'Call ended'}</h3><p>${msg}</p>${c.summary ? `<p class="recap">${esc(c.summary.summary)}</p>` : ''}</div>`;
     controls = `<div style="width:100%;display:flex;flex-direction:column;gap:10px"><button class="btn primary" data-act="callAct" data-val="report">${ico('flag')} Report this number</button><button class="btn outline-light" data-act="callAct" data-val="done">Done</button></div>`;
   }
-  return `<div class="call"><div class="top"><div class="label ${labelCls}">${ico(c.phase === 'screening' ? 'headset' : 'alert')} ${esc(c.label)}</div><div class="who">${esc(c.num)}</div><div class="where">${esc(c.loc || '')}${c.callerId ? ' · T-Mobile Caller ID' : ''}</div><div class="state">${state}</div></div><div class="body">${body}</div><div class="controls">${controls}</div></div>`;
+  // iPhone call-screen layout: caller label line, big number, location, then the ScamShield state line.
+  const l1 = /unknown caller/i.test(c.label) ? (c.loc || 'Unknown') : c.label;
+  const showMini = c.phase === 'ringing' || c.phase === 'screening';
+  const mini = showMini ? `<div class="mini"><button class="m" data-act="callAct" data-val="noop">${ico('message')}<span>Message</span></button><button class="m" data-act="callAct" data-val="${c.phase === 'ringing' && c.remote ? 'end' : 'noop'}">${ico(c.phase === 'ringing' && c.remote ? 'phoneOff' : 'voicemail')}<span>${c.phase === 'ringing' && c.remote ? 'Decline' : 'Voicemail'}</span></button></div>` : '';
+  return `<div class="call ${c.phase}"><button class="info" data-act="callAct" data-val="noop" aria-label="Info">i</button><div class="top"><div class="l1 ${labelCls}">${esc(l1)}</div><div class="who">${esc(c.num)}</div><div class="where">${c.loc && l1 !== c.loc ? esc(c.loc) : ''}${c.callerId ? (c.loc && l1 !== c.loc ? ' · ' : '') + 'T-Mobile Caller ID' : ''}</div><div class="state">${state}</div></div><div class="body">${body}</div><div class="controls">${mini}<div class="mainrow">${controls}</div></div></div>`;
 }
 
 /* ---------- Learn tab (Safe Signal practice) ---------- */
@@ -507,29 +504,26 @@ async function loadLearn() { S.learn = await api.get(`/learn/${curLine().lineId}
 async function openSession(id) { S.session = await api.get(`/learn/session/${id}`); if (current() !== 'learn-chat') go('learn-chat'); else render(); }
 async function openLesson(id) { S.lessonSession = await api.get(`/learn/session/${id}`); if (current() !== 'lesson') go('lesson'); else render(); }
 function learnScreen() {
-  const L = S.learn;
-  if (!L) { loadLearn().catch(fail); return `${header('Learn', {})}${petStage()}<div class="card"><p class="desc">Loading your practice history…</p></div>`; }
-  const st = L.stats, consent = L.consent && L.consent.active ? L.consent : null;
-  const sessionRow = s => row({ icon: CAT_ICON[s.scenario?.category] || 'message', cls: s.outcome === 'caught' ? 'green' : s.outcome ? 'red' : 'amber', title: esc(s.scenario?.brand && s.scenario.brand !== 'none' ? s.scenario.brand : (s.scenario?.categoryLabel || s.scenarioId)), sub: `${esc(s.scenario?.categoryLabel || '')} · ${s.outcome === 'caught' ? 'You caught it' : s.outcome === 'fell_for_it' ? 'You fell for it' : s.outcome === 'opted_out' ? 'Opted out' : 'In progress'}${s.channel === 'imessage' ? ' · iMessage' : ''}`, meta: ago(Math.round((Date.now() - new Date(s.startedAt)) / 60000)), act: isOver(s) ? 'lesson' : 'session', val: s.id });
+  const L = S.learn; if (!L) loadLearn().catch(() => {});
   return `
-  ${header('Learn', { icons: [['search', 'sheet', 'detect'], ['settings', 'sheet', 'optin']] })}
-  ${petStage()}
-  ${L.active ? `<button class="card" data-act="session" data-val="${L.active.id}" style="width:100%"><div class="head"><div class="ico">${ico('message')}</div><div><div class="lbl">Practice in progress</div><div class="big" style="font-size:18px">${esc(L.active.scenario?.brand && L.active.scenario.brand !== 'none' ? L.active.scenario.brand : 'Someone')} is texting you</div></div></div><div class="cta"><span>Continue the conversation</span>${ico('chevR')}</div></button>` : ''}
-  ${consent ? '' : `<div class="card magenta"><div class="eyebrow">Safe Signal practice</div><div class="big">Train your scam radar</div><p class="desc">Get realistic practice texts in a safe sandbox or on your phone. Catch them and Buddy gets stronger; tap the link and Buddy takes the hit.</p><div class="btn-row"><button class="btn white" data-act="sheet" data-val="optin">Start scam practice</button></div></div>`}
-  <h2 class="section">Train with Buddy</h2>
-  <div class="tiles">${tile('message', 'Practice now', 'practice', 'simulator')}${tile('phone', 'Text my phone', 'practice', 'imessage')}${tile('sparkles', 'Quick check', 'quizNow', '')}${tile('search', 'Check a text', 'sheet', 'detect')}</div>
-  ${consent ? `<h2 class="section">Pick a scenario</h2>
-  <div class="chips">${L.categories.map(c => `<button class="chip ${S.pickCategory === c.id ? 'on' : ''}" data-act="pickCat" data-val="${c.id}">${c.label}</button>`).join('')}</div>
-  <p class="note">${S.pickCategory ? 'Next practice will use this category. Tap again to clear.' : 'Leave unselected and we pick from your interests, avoiding recent repeats.'}</p>` : ''}
-  ${petDashboard()}
-  ${L.skills.length ? `<h2 class="section">Your scam radar</h2><div class="card">${L.skills.sort((a, b) => a.score - b.score).map(k => `<div class="skill"><div class="row-top"><span>${esc(k.label)}</span><span class="muted">${k.caught}/${k.encountered} caught</span></div><div class="bar"><div class="fill ${k.score >= .67 ? 'good' : k.score >= .34 ? 'mid' : 'low'}" style="width:${Math.max(6, Math.round(k.score * 100))}%"></div></div></div>`).join('')}<p class="note">Scored per red-flag type across ${st.total} session${st.total === 1 ? '' : 's'}. The weakest one drives the next scenario.</p></div>` : ''}
-  <h2 class="section">Recent practice</h2>
-  <div class="card flush">${L.sessions.length ? L.sessions.slice(0, 6).map(sessionRow).join('') : emptyHtml('No practice sessions yet', 'message')}</div>
-  ${petLog()}
-  <div class="card flush">
-    <div class="row"><div class="ico">${ico('bell')}</div><div class="txt"><div class="t">Quick checks from Buddy</div><div class="s">A question bubble now and then while you are on this tab</div></div><button class="switch ${S.quizOn ? 'on' : ''}" data-act="quizToggle" role="switch" aria-checked="${!!S.quizOn}"></button></div>
-  </div>
-  <p class="note">Practice texts are clearly marked as training the moment you tap a link or share anything sensitive. Replies are redacted before storage. Buddy only sees outcomes, never real calls or texts.</p>`;
+  ${header('Learn', { icons: [['clipboard', 'sheet', 'stats'], ['settings', 'sheet', 'optin']] })}
+  ${S.trap ? trapCard(S.trap) : ''}
+  ${L?.active ? `<button class="card practice-live" data-act="session" data-val="${L.active.id}" style="width:100%"><div class="between"><div><div class="eyebrow">Practice text in progress</div><div class="big" style="font-size:18px">${esc(L.active.scenario?.brand && L.active.scenario.brand !== 'none' ? L.active.scenario.brand : 'Someone')} is texting you</div></div>${ico('chevR')}</div></button>` : ''}
+  ${questMap()}
+  <p class="note">Each stop is a different scam, played rather than read. Clear a stop with half or more to unlock the next. Wins give Buddy +8 energy, losses cost 5. Field test sends a real practice text to your phone.</p>`;
+}
+/* Stats sheet: the dashboard that used to be the Learn page */
+function statsSheet() {
+  const L = S.learn; if (!L) { loadLearn().catch(() => {}); return '<div class="title">Your stats</div><p class="desc">Loading…</p>'; }
+  const st = L.stats;
+  const sessionRow = s => row({ icon: CAT_ICON[s.scenario?.category] || 'message', cls: s.outcome === 'caught' ? 'green' : s.outcome ? 'red' : 'amber', title: esc(s.scenario?.brand && s.scenario.brand !== 'none' ? s.scenario.brand : (s.scenario?.categoryLabel || s.scenarioId)), sub: `${s.outcome === 'caught' ? 'You caught it' : s.outcome === 'fell_for_it' ? 'You fell for it' : s.outcome === 'opted_out' ? 'Opted out' : 'In progress'}${s.channel === 'imessage' ? ' · iMessage' : ''}`, meta: ago(Math.round((Date.now() - new Date(s.startedAt)) / 60000)), act: isOver(s) ? 'lesson' : 'session', val: s.id });
+  return `<div class="title">Your stats</div><div class="sub">${st.total} practice session${st.total === 1 ? '' : 's'} · ${st.caught} caught · ${totalStars()} stars on the map</div>
+    ${petDashboard()}
+    ${L.skills.length ? `<h2 class="section">Your scam radar</h2><div class="card">${L.skills.sort((a, b) => a.score - b.score).map(k => `<div class="skill"><div class="row-top"><span>${esc(k.label)}</span><span class="muted">${k.caught}/${k.encountered} caught</span></div><div class="bar"><div class="fill ${k.score >= .67 ? 'good' : k.score >= .34 ? 'mid' : 'low'}" style="width:${Math.max(6, Math.round(k.score * 100))}%"></div></div></div>`).join('')}</div>` : ''}
+    <h2 class="section">Recent practice texts</h2>
+    <div class="card flush">${L.sessions.length ? L.sessions.slice(0, 6).map(sessionRow).join('') : emptyHtml('No practice texts yet', 'message')}</div>
+    ${petLog()}
+    <div class="card flush"><div class="row"><div class="ico">${ico('bell')}</div><div class="txt"><div class="t">Quick checks from Buddy</div><div class="s">A question bubble on the map now and then</div></div><button class="switch ${S.quizOn ? 'on' : ''}" data-act="quizToggle" role="switch"></button></div></div>`;
 }
 function learnChatScreen() {
   const s = S.session;
@@ -610,7 +604,7 @@ function render(resetScroll) {
   if (bind) { const el = content.querySelector(`[data-bind="${bind}"]`); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) {} } }
   renderOverlay();
 }
-const last = { sheet: '', call: null, toast: '', quiz: '' };
+const last = { sheet: '', call: null, toast: '', quiz: '', game: '' };
 function callKey() { const c = S.call; return [c.scn, c.phase, c.endedBy, c.callerId, c.label, c.remote, !!c.summary].join('|') + '#' + [c.dismissed, c.transcript.length, c.alerts.length, S.premium].join('|'); }
 function updateCall(callEl, k) {
   const html = callHtml();
@@ -621,8 +615,10 @@ function updateCall(callEl, k) {
 }
 function renderOverlay() {
   const ov = document.getElementById('overlay');
-  if (!ov.querySelector('#sheetov')) ov.innerHTML = '<div id="sheetov"></div><div id="callov"></div><div id="quizov"></div><div id="toastov"></div>';
+  if (!ov.querySelector('#sheetov')) ov.innerHTML = '<div id="sheetov"></div><div id="gameov"></div><div id="callov"></div><div id="quizov"></div><div id="toastov"></div>';
   const [sheetEl, callEl, toastEl, quizEl] = ['#sheetov', '#callov', '#toastov', '#quizov'].map(s => ov.querySelector(s));
+  const gh = S.call ? '' : arenaHtml();
+  if (gh !== last.game) { ov.querySelector('#gameov').innerHTML = gh; last.game = gh; }
   const qh = S.call ? '' : quizHtml();
   if (qh !== last.quiz) { quizEl.innerHTML = qh; last.quiz = qh; }
   let sh = '';
@@ -633,6 +629,7 @@ function renderOverlay() {
     if (name === 'premium') inner = premiumSheet();
     if (name === 'optin') inner = optinSheet();
     if (name === 'detect') inner = detectSheet();
+    if (name === 'stats') inner = statsSheet();
     sh = `<div class="backdrop" data-act="close"><div class="sheet" data-stop="1"><div class="grab"></div>${inner}</div></div>`;
   }
   if (sh !== last.sheet) {
@@ -710,6 +707,7 @@ document.addEventListener('click', e => {
     detect: () => { const t = (S.detectText || '').trim(); if (!t) return toast('Paste a message first'); api.post('/learn/detect', { text: t, senderKnown: false }).then(r => { S.detectRes = r; renderOverlay(); }).catch(fail); },
     reset: () => { localStorage.removeItem(KEY); location.reload(); },
     ...BUDDY_ACTIONS(v, el),
+    ...GAME_ACTIONS(v, el),
   };
   (A[act] || (() => {}))();
 });

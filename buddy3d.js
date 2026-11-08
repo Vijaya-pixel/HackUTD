@@ -125,6 +125,7 @@ class Buddy {
     this.face = buildFace(e); this.root.add(this.face); this.emotion = e;
   }
   setState({ health, reaction }) { this.setEmotion(reaction || emotionFromHealth(health)); }
+  face(dx) { this.yaw = dx > 0 ? -0.55 : dx < 0 ? 0.55 : 0; }
   attach(el, state) {
     if (state) this.setState(state);
     if (!el) return;
@@ -145,7 +146,8 @@ class Buddy {
     if (!this.reduced) {
       const energetic = this.emotion === 'excited' || this.emotion === 'celebrating';
       this.root.position.y = Math.sin(t * (energetic ? 3 : 1.7)) * (energetic ? 0.09 : 0.045);
-      this.root.rotation.y = Math.sin(t * 0.7) * 0.085;
+      this.yawNow = (this.yawNow || 0) + ((this.yaw || 0) - (this.yawNow || 0)) * 0.12; // ease toward the walking direction
+      this.root.rotation.y = this.yawNow + Math.sin(t * 0.7) * 0.085;
       this.root.rotation.z = this.emotion === 'critical' ? -0.06 : Math.sin(t * 0.85) * 0.025;
       this.hand.rotation.z = energetic ? Math.sin(t * 5) * 0.4 : 0;
       if (t - this.lastBlink > 3.8) { this.lastBlink = t; this.blink = true; setTimeout(() => { this.blink = false; }, 150); }
@@ -160,6 +162,7 @@ let buddy = null;
 window.Buddy3D = {
   attach(el, state) { try { if (!buddy) buddy = new Buddy(); buddy.attach(el, state); return true; } catch (e) { console.warn('[buddy3d]', e.message); return false; } },
   setState(state) { if (buddy) buddy.setState(state); },
+  face(dx) { if (buddy) buddy.face(dx); },
   emotionFromHealth,
 };
 document.dispatchEvent(new Event('buddy3d-ready'));

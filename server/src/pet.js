@@ -5,7 +5,7 @@
 import { q, one } from './db.js';
 import { publish } from './sse.js';
 
-export const DELTA = { caught: 12, fell: -15, trap: -25, quiz_right: 5, quiz_wrong: -6, report: 4, bonus: 3 };
+export const DELTA = { caught: 12, fell: -15, trap: -25, quiz_right: 5, quiz_wrong: -6, report: 4, bonus: 3, game_win: 8, game_loss: -5 };
 const TOGGLE_PTS = { scamBlock: 6, callerId: 3, screener: 4, aiVoice: 3, inCall: 4 }; // 20 max
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
@@ -71,7 +71,24 @@ export async function nextQuestion(lineId) {
   return { id: pick.id, cat: pick.cat, q: pick.q, options: pick.options };
 }
 
+/* ---------- ScamShield Quest progress ---------- */
+export async function gameProgress(lineId) {
+  const rows = (await q('SELECT node, stars, best, plays, updated FROM game_progress WHERE line_id = $1', [lineId])).rows;
+  return Object.fromEntries(rows.map(r => [r.node, { stars: r.stars, best: r.best, plays: r.plays, updated: r.updated }]));
+}
+
 export function registerPet(app) {
+  app.get('/api/game/:lineId', async c => c.json({ progress: await gameProgress(c.req.param('lineId')), pet: await petState(c.req.param('lineId')) }));
+  app.post('/api/game/:lineId/result', async c => {
+    const lineId = c.req.param('lineId');
+    const { node, title, score = 0, max = 1, stars = 0, win = false } = await c.req.json();
+    if (!node) return c.json({ error: 'node required' }, 400);
+    await q(`INSERT INTO game_progress (line_id, node, stars, best, plays) VALUES ($1,$2,$3,$4,1)
+             ON CONFLICT (line_id, node) DO UPDATE SET stars = GREATEST(game_progress.stars, EXCLUDED.stars), best = GREATEST(game_progress.best, EXCLUDED.best), plays = game_progress.plays + 1, updated = now()`,
+      [lineId, node, Math.max(0, Math.min(3, Number(stars) || 0)), Number(score) || 0]);
+    const state = await petEvent(lineId, win ? 'game_win' : 'game_loss', `${win ? 'Cleared' : 'Lost'} ${title || node}: ${score}/${max}`, { node, score, max, stars });
+    return c.json({ progress: await gameProgress(lineId), pet: state });
+  });
   app.get('/api/pet/:lineId', async c => { const s = await petState(c.req.param('lineId')); return s ? c.json(s) : c.json({ error: 'line not found' }, 404); });
   app.get('/api/pet/:lineId/quiz', async c => c.json(await nextQuestion(c.req.param('lineId'))));
   app.post('/api/pet/:lineId/quiz', async c => {
