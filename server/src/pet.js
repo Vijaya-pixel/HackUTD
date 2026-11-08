@@ -79,6 +79,10 @@ const TASKS = {
   hangup: [{ id: 'hu-clear', label: 'Get through three scam calls', points: 30, need: 1 }, { id: 'hu-sharp', label: 'Hang up at the red flag, all three calls', points: 50, need: 2 }],
   codekeeper: [{ id: 'ck-clear', label: 'Keep your code through three asks', points: 35, need: 1 }, { id: 'ck-clean', label: 'Code Keeper with no risky replies', points: 50, need: 3 }],
   familysos: [{ id: 'fs-clear', label: 'Verify the family emergency', points: 35, need: 1 }, { id: 'fs-clean', label: 'Family SOS without sending a cent', points: 50, need: 3 }],
+  situations: [{ id: 'sr-clear', label: 'Handle 4 of 7 situations safely', points: 30, need: 1 }, { id: 'sr-perfect', label: 'Situation Room, all seven right', points: 50, need: 3 }],
+  jobhunt: [{ id: 'jh-clear', label: 'Turn down the Dream Job without paying', points: 35, need: 1 }, { id: 'jh-clean', label: 'Dream Job with no risky replies', points: 50, need: 3 }],
+  deepfake: [{ id: 'vc-clear', label: 'Hang up on three cloned voices', points: 40, need: 1 }, { id: 'vc-sharp', label: 'Voice Clone, every hang-up at the red flag', points: 60, need: 2 }],
+  romance: [{ id: 'ro-clear', label: 'Keep your wallet out of Too Good', points: 35, need: 1 }, { id: 'ro-clean', label: 'Too Good with no risky replies', points: 50, need: 3 }],
   storm: [{ id: 'st-clear', label: 'Clear the Scam Storm boss', points: 60, need: 1 }, { id: 'st-perfect', label: 'Scam Storm, ten for ten', points: 80, need: 3 }],
 };
 export const WEEK_GOAL = 180;
@@ -92,8 +96,11 @@ export function weekKey(d = new Date()) {
 export async function weekTasks(lineId) {
   const week = weekKey();
   let rows = (await q('SELECT node, task_id, label, points, need_stars, done_at FROM game_tasks WHERE line_id = $1 AND week = $2', [lineId, week])).rows;
-  if (!rows.length) {
-    for (const [node, list] of Object.entries(TASKS)) {
+  // one task per checkpoint; checkpoints added mid-week get theirs on the next load
+  const have = new Set(rows.map(r => r.node));
+  const missing = Object.entries(TASKS).filter(([node]) => !have.has(node));
+  if (missing.length) {
+    for (const [node, list] of missing) {
       const t = list[Math.floor(Math.random() * list.length)];
       await q('INSERT INTO game_tasks (line_id, week, node, task_id, label, points, need_stars) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING', [lineId, week, node, t.id, t.label, t.points, t.need]);
     }

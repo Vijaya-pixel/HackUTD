@@ -5,12 +5,16 @@
 
 /* ---------- the map ---------- */
 const QUEST = [
-  { id: 'texttrap', title: 'Text Trap', kind: 'sorter', icon: 'message', x: 50, y: 80, color: '#E20074', blurb: 'Texts fly in. Call each one Legit or Scam before the timer runs out.', teaches: 'Delivery, toll and account texts' },
-  { id: 'linklens', title: 'Link Lens', kind: 'links', icon: 'globe', x: 18, y: 58, color: '#7A3BFF', blurb: 'Three links, one is real. Read what comes right before the first slash.', teaches: 'Look-alike domains' },
-  { id: 'hangup', title: 'Hang Up', kind: 'call', icon: 'phoneOff', x: 80, y: 60, color: '#D7263D', blurb: 'A caller talks. Hit Hang up the moment you hear the red flag, before they ask for anything.', teaches: 'Phone scams and pressure' },
-  { id: 'codekeeper', title: 'Code Keeper', kind: 'chat', icon: 'lock', x: 28, y: 30, color: '#1E9E5A', blurb: 'Your "bank" is texting. Pick the reply that keeps your code yours.', teaches: 'One-time codes and PINs' },
-  { id: 'familysos', title: 'Family SOS', kind: 'chat', icon: 'users', x: 76, y: 32, color: '#E09A00', blurb: 'An emergency text from "family". Choose what to do, step by step.', teaches: 'Family emergency scams' },
-  { id: 'storm', title: 'Scam Storm', kind: 'storm', icon: 'alert', x: 52, y: 10, color: '#1A1A1A', boss: true, blurb: 'Boss round. Everything at once, faster. Eight of ten to clear it.', teaches: 'All of the above, under pressure' },
+  { id: 'texttrap', title: 'Text Trap', kind: 'sorter', icon: 'message', x: 50, y: 93, color: '#E20074', blurb: 'Texts fly in. Call each one Legit or Scam before the timer runs out.', teaches: 'Delivery, toll and account texts' },
+  { id: 'linklens', title: 'Link Lens', kind: 'links', icon: 'globe', x: 18, y: 84, color: '#7A3BFF', blurb: 'Three links, one is real. Read what comes right before the first slash.', teaches: 'Look-alike domains' },
+  { id: 'hangup', title: 'Hang Up', kind: 'call', icon: 'phoneOff', x: 80, y: 76, color: '#D7263D', blurb: 'A caller talks. Hit Hang up the moment you hear the red flag, before they ask for anything.', teaches: 'Phone scams and pressure' },
+  { id: 'situations', title: 'Situation Room', kind: 'pick', icon: 'clipboard', x: 28, y: 67, color: '#2B6BE4', blurb: 'Seven everyday moments. Pick the move that keeps you safe.', teaches: 'QR codes, pop-ups, deposits, donations' },
+  { id: 'codekeeper', title: 'Code Keeper', kind: 'chat', icon: 'lock', x: 74, y: 58, color: '#1E9E5A', blurb: 'Your "bank" is texting. Pick the reply that keeps your code yours.', teaches: 'One-time codes and PINs' },
+  { id: 'jobhunt', title: 'Dream Job', kind: 'chat', icon: 'star', x: 22, y: 49, color: '#0FA3B1', blurb: 'A recruiter texts the perfect offer. See how far you get without paying to work.', teaches: 'Fake checks and advance fees' },
+  { id: 'familysos', title: 'Family SOS', kind: 'chat', icon: 'users', x: 78, y: 40, color: '#E09A00', blurb: 'An emergency text from "family". Choose what to do, step by step.', teaches: 'Family emergency scams' },
+  { id: 'deepfake', title: 'Voice Clone', kind: 'call', calls: 'clone', icon: 'mic', x: 26, y: 31, color: '#8E44AD', blurb: 'Voices that sound exactly like people you know. Hang up on the pressure, not the person.', teaches: 'AI voice clones and CEO fraud' },
+  { id: 'romance', title: 'Too Good', kind: 'chat', icon: 'heart', x: 72, y: 22, color: '#E0527A', blurb: 'A new connection wants to help you invest. Keep your heart and your wallet apart.', teaches: 'Romance and crypto investment scams' },
+  { id: 'storm', title: 'Scam Storm', kind: 'storm', icon: 'alert', x: 50, y: 8, color: '#1A1A1A', boss: true, blurb: 'Boss round. Everything at once, faster. Eight of ten to clear it.', teaches: 'All of the above, under pressure' },
 ];
 const STARS = r => r >= .9 ? 3 : r >= .7 ? 2 : r >= .5 ? 1 : 0;
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -69,6 +73,54 @@ const CHATS = {
   ] },
 };
 
+SMS_POOL.push(
+  { from: 'Venmo', text: 'You received $250 from a buyer. To release the funds, upgrade to a business account for $25: venmo-upgrade.co', scam: true, why: 'Venmo never asks you to pay to receive money.' },
+  { from: 'Delta', text: 'Flight DL1204 is on time. Gate B12, boarding 2:40pm.', scam: false, why: 'Information only, specific to your trip, no link and no ask.' },
+  { from: '+1 (877) 555-0188', text: 'Your Netflix is suspended. Update payment within 24h: netflix-billing.com', scam: true, why: 'Look-alike domain plus a deadline.' },
+  { from: 'Mom', text: 'Call me when you get a sec, nothing urgent.', scam: false, why: 'A known contact, and explicitly not urgent.' },
+  { from: 'FedEx', text: 'Customs fee $1.99 due for package 7731. Pay now to avoid return: fedex-customs.pay', scam: true, why: 'Carriers do not collect tiny fees by text link, and the domain is not fedex.com.' },
+  { from: 'Costco', text: 'Congrats! You were chosen for a $500 loyalty reward. Claim within 1 hour: costco-rewards.win', scam: true, why: 'A prize you never entered, with a countdown, is bait.' },
+);
+const SITUATIONS = [
+  { q: 'A sticker QR code on a parking meter looks newer than the sign around it.', options: ['Scan it, QR codes are safe', 'Use the city parking app or the meter keypad', 'Scan it and check for a padlock icon'], answer: 1, why: 'Fake QR stickers send you to clone payment pages. A padlock only means the fake site has HTTPS.' },
+  { q: 'A pop-up says your computer is infected and shows a Microsoft support number to call.', options: ['Call the number', 'Close the browser; real warnings never include a phone number', 'Install the cleaner it suggests'], answer: 1, why: 'Microsoft does not put phone numbers in warnings. The call leads to remote access and a fee.' },
+  { q: 'An email says your Netflix payment failed. The sender is billing@netflix-account.co.', options: ['Tap Update payment', 'Open Netflix yourself from the app or a typed address', 'Reply asking which card failed'], answer: 1, why: 'netflix-account.co is not netflix.com. Go in through the front door you already know.' },
+  { q: 'A landlord on a listing site wants a deposit by Zelle before you can view the apartment.', options: ['Send a smaller deposit to hold it', 'Never pay before seeing the place and the owner in person', 'Ask for a receipt first'], answer: 1, why: 'Deposit-before-viewing is the rental scam. Receipts from scammers are free to type.' },
+  { q: 'After a hurricane, a text asks for donations to a relief fund, payable in gift cards.', options: ['Buy the cards, people need help', 'Give through a known charity site you typed yourself', 'Send half now and half later'], answer: 1, why: 'No charity takes gift cards. Disasters bring out fake funds within hours.' },
+  { q: 'Someone you met on a dating app wants you to try their crypto platform with guaranteed returns.', options: ['Start with $100 to test it', 'Decline; romance plus investing is a known scam', 'Ask for screenshots of their gains'], answer: 1, why: 'The platform is fake and the screenshots are too. This is called pig butchering.' },
+  { q: 'A voicemail says your Social Security number was suspended for criminal activity.', options: ['Call back right away', 'Delete it; numbers cannot be suspended and agencies write by mail', 'Pay the small reactivation fee'], answer: 1, why: 'There is no such thing as a suspended SSN. Fear plus a callback number is the tell.' },
+  { q: 'Airport Wi-Fi named "Airport_Free_WiFi_2" asks you to log in with your email password.', options: ['Log in, it is the airport', 'Use cellular or the network named on official signage, and never a password', 'Log in but change the password later'], answer: 1, why: 'Rogue hotspots harvest passwords. Real captive portals never ask for your email password.' },
+  { q: 'A Marketplace buyer overpays with a check and asks you to refund the difference.', options: ['Refund the difference by Zelle', 'Do not refund; the check will bounce. Cancel the sale', 'Refund after the check shows as cleared'], answer: 1, why: 'Banks show checks as available days before they bounce. Overpayment is always the scam.' },
+  { q: 'Your "boss" emails from a new address asking you to buy $500 in gift cards for clients today.', options: ['Buy them, the boss asked', 'Call your boss on a number you already have', 'Reply asking which brand of card'], answer: 1, why: 'New address, secrecy and gift cards is business email compromise. One phone call ends it.' },
+];
+const CALLS_CLONE = [
+  { caller: 'Caller ID: "Dad"', lines: [
+    { who: 'caller', text: "Hey sweetheart, it's Dad. I'm okay, but I was in an accident." },
+    { who: 'caller', text: "Please don't tell your mother. I need you to wire $3,000 to the lawyer right now.", flag: true },
+    { who: 'caller', text: 'He says the court only takes Bitcoin ATM payments today. Can you go now?', ask: true },
+    { who: 'you', text: "Okay, where's the nearest ATM…", lose: true } ] },
+  { caller: 'Caller ID: "Dana (CEO)"', lines: [
+    { who: 'caller', text: "This is Dana. I'm in a board meeting and can't talk long." },
+    { who: 'caller', text: 'I need you to handle something confidential and fast. Keep it between us.', flag: true },
+    { who: 'caller', text: 'Buy five $200 gift cards and text me the codes in the next 30 minutes.', ask: true },
+    { who: 'you', text: 'On it, heading to the store…', lose: true } ] },
+  { caller: 'Unknown · sounds like your sister', lines: [
+    { who: 'caller', text: "Hey it's me, I'm on a stranger's phone. I got mugged downtown." },
+    { who: 'caller', text: "I'm scared, please just send money to this Cash App, I'll explain later.", flag: true },
+    { who: 'caller', text: "They're saying I have to pay the cab $400 right now or they call the police.", ask: true },
+    { who: 'you', text: 'Sending now…', lose: true } ] },
+];
+CHATS.jobhunt = { them: 'Talent team', steps: [
+  { them: 'Hi! Your resume stood out. Remote data entry, $34/hr, start Monday. Interested?', choices: [{ t: 'Interested, tell me more', good: true, why: 'Asking costs nothing. Watch what comes next.' }, { t: 'Send me the onboarding link', good: false, why: 'You asked for the link before learning who they are.' }, { t: 'Which company, and who referred me?', good: true, why: 'Specific questions expose vague recruiters.' }] },
+  { them: 'Great, no interview needed. HR will mail a check for your laptop. Deposit it and send $450 to our vendor for setup.', choices: [{ t: 'Deposit the check and pay the vendor', good: false, end: 'loss', why: 'The check bounces days later and the $450 is gone. Fake-check jobs are the whole scam.' }, { t: 'Say you only use company-issued equipment', good: true, why: 'Real employers ship equipment. They never route money through you.' }, { t: 'Look up the company careers page yourself', good: true, why: 'If the role is not there, it does not exist.' }] },
+  { them: 'The offer expires tonight. Just confirm your bank details so payroll can set you up.', choices: [{ t: 'Send bank details', good: false, end: 'loss', why: 'Bank details plus urgency equals a drained account.' }, { t: 'Decline and report the recruiter', good: true, why: 'Deadlines on job offers by text are pressure, not process.' }, { t: 'Ask for a video interview first', good: true, why: 'Scammers avoid live verification.' }] },
+] };
+CHATS.romance = { them: 'Alex', steps: [
+  { them: "Good morning! I've loved our talks this week. Can I show you how I make side income with crypto? It changed my life.", choices: [{ t: 'Sure, show me', good: false, why: 'Curiosity is fine, but this is the pivot from romance to money.' }, { t: 'I keep money and dating separate', good: true, why: 'A clean boundary. Real connections survive it.' }, { t: 'How long have you been doing it?', good: true, why: 'Questions slow the script down.' }] },
+  { them: 'My uncle works at an exchange. Start with $200 on this platform and watch it grow by Friday. I will guide you.', choices: [{ t: 'Deposit $200 to try', good: false, end: 'loss', why: 'The platform is fake. The gains on screen are numbers the scammer types, and withdrawals never come.' }, { t: 'Say no and suggest a video call instead', good: true, why: 'Investment pressure plus avoiding video is the pig-butchering pattern.' }, { t: 'Search the platform name with the word scam', good: true, why: 'Two minutes of searching beats months of regret.' }] },
+  { them: 'I thought you trusted me. If you cared you would at least try. Please, for us.', choices: [{ t: 'Fine, $200', good: false, end: 'loss', why: 'Guilt is the lever. Love does not require a deposit.' }, { t: 'End the conversation and block', good: true, why: 'Emotional pressure about money is the end of the line.' }, { t: 'Tell a friend what is happening', good: true, why: 'A second opinion breaks the isolation scammers rely on.' }] },
+] };
+
 /* ---------- state ---------- */
 function gameState() { if (!S.game) S.game = { progress: null, current: null, run: null, loading: false }; return S.game; }
 async function loadGame() {
@@ -90,6 +142,8 @@ function petPos() {
   const g = gameState();
   if (!g.pos) { try { g.pos = JSON.parse(localStorage.getItem(posKey())) || null; } catch {} if (!g.pos) { const n = QUEST[0]; g.pos = { x: n.x, y: n.y, at: n.id }; } }
   if (!g.pos.at) { const n = QUEST.find(q => Math.abs(q.x - g.pos.x) < 6 && Math.abs(q.y - g.pos.y) < 6) || QUEST[0]; g.pos = { x: n.x, y: n.y, at: n.id }; }
+  // a remembered spot that is locked now (layout changed, new line) goes back to the next open stop
+  if (g.progress && !unlocked(nodeIndex(g.pos.at))) { const n = QUEST[nodeIndex(defaultNode())]; g.pos = { x: n.x, y: n.y, at: n.id }; try { localStorage.setItem(posKey(), JSON.stringify(g.pos)); } catch {} }
   return g.pos;
 }
 function nearNode() { const p = petPos(); return QUEST.find(n => n.id === p.at) || null; }
@@ -128,7 +182,8 @@ function questMap() {
     const av = document.querySelector('.quest .avatar'); if (!av) return;
     const el = av.querySelector('.pet3d'); if (el && window.Buddy3D && P && window.Buddy3D.attach(el, { health: P.health, reaction })) el.classList.add('live');
     const bar = document.querySelector('.quest .hud .fill[data-to]'); if (bar) requestAnimationFrame(() => { bar.style.width = bar.dataset.to + '%'; });
-    const wk = document.querySelector('.quest .weekbar .fill[data-to]'); if (wk) requestAnimationFrame(() => { wk.style.width = wk.dataset.to + '%'; });
+    // open the map where Buddy stands (the path starts at the bottom), once per visit
+    if (g.scrolledTo !== p.at) { g.scrolledTo = p.at; const c = document.getElementById('content'); const r = av.getBoundingClientRect(), cr = c.getBoundingClientRect(); c.scrollTop += (r.top - cr.top) - cr.height * 0.45; }
   }, 0);
   const energy = P ? P.health : 0, eCls = energy >= 60 ? 'good' : energy >= 40 ? 'mid' : 'low';
   const pct = W ? Math.min(100, Math.round(W.points / W.goal * 100)) : 0;
@@ -136,7 +191,7 @@ function questMap() {
   if (here) {
     const i = nodeIndex(here.id), prog = g.progress[here.id], locked = !unlocked(i), t = taskFor(here.id);
     card = `<div class="nodecard" style="--c:${here.color}">
-      <div class="nc-top"><div class="orb">${ico(here.icon)}</div><div class="nc-t"><div class="eyebrow">${here.boss ? 'Boss cloud' : `Cloud ${i + 1} of ${QUEST.length}`} · ${esc(here.teaches)}</div><div class="big">${here.title}</div></div>${stars(here)}</div>
+      <div class="nc-top"><div class="orb">${ico(here.icon)}</div><div class="nc-t"><div class="eyebrow">${here.boss ? 'Boss cloud' : `Stop ${i + 1} of ${QUEST.length}`} · ${esc(here.teaches)}</div><div class="big">${here.title}</div></div>${stars(here)}</div>
       ${t ? `<div class="task ${t.done ? 'done' : ''}"><div class="tp">${t.done ? ico('check') : '+' + t.points}</div><div class="tt"><div class="tl">This week's T-Mobile task</div><div class="tn">${esc(t.label)}</div></div>${t.done ? '<div class="tdone">Done</div>' : `<div class="tneed">${'★'.repeat(t.needStars)}</div>`}</div>` : ''}
       <p class="desc">${esc(here.blurb)}</p>
       ${prog ? `<div class="nc-meta">Best ${prog.best} · played ${prog.plays}×</div>` : ''}
@@ -148,15 +203,12 @@ function questMap() {
   }
   return `
   <div class="quest">
-    <div class="hud">
-      <div class="e"><div class="lbl"><span>${ico('heart')} Buddy's energy</span><b>${energy}</b></div><div class="bar"><div class="fill ${eCls}" style="width:${S.petAnim?.from ?? energy}%" data-to="${energy}"></div></div></div>
-      <div class="pill">Lv ${P?.level || 1}</div><div class="pill star">★ ${totalStars()}/${QUEST.length * 3}</div>
+    <div class="hud one">
+      <div class="e">
+        <div class="lbl"><span>${ico('heart')} Buddy <b>${energy}</b></span>${W ? `<span class="wk">${ico('gift')} ${W.points}/${W.goal} pts${W.rewardEarned ? ' · reward earned' : ''}</span>` : ''}<span class="st">★ ${totalStars()}/${QUEST.length * 3} · Lv ${P?.level || 1}</span></div>
+        <div class="bar"><div class="fill ${eCls}" style="width:${S.petAnim?.from ?? energy}%" data-to="${energy}"></div>${W ? `<div class="pin ${W.rewardEarned ? 'earned' : ''}" style="left:${pct}%">${ico('gift')}</div>` : ''}</div>
+      </div>
     </div>
-    ${W ? `<div class="weekbar ${W.rewardEarned ? 'earned' : ''}">
-      <div class="wb-top"><div class="wb-t">${ico('tmo')} <b>This week's tasks</b> <span>${W.key.replace('-W', ' · week ')}</span></div><div class="wb-pts"><b>${W.points}</b>/${W.goal} pts</div></div>
-      <div class="bar"><div class="fill" style="width:0%" data-to="${pct}"></div><div class="goal">${ico('gift')}</div></div>
-      <div class="wb-reward">${W.rewardEarned ? `${ico('checkCircle')} Reward earned: <b>${esc(W.reward)}</b>` : `Fill the bar to earn <b>${esc(W.reward)}</b> · ${W.tasks.filter(t => t.done).length}/${W.tasks.length} tasks done`}</div>
-    </div>` : ''}
     <div class="map">
       <div class="hills"></div>
       <svg class="road dotted" viewBox="0 0 100 100" preserveAspectRatio="none"><path class="dots" d="${cloudPath()}"/></svg>
@@ -175,8 +227,9 @@ function startRun(id) {
   const run = { node: n, kind: n.kind, i: 0, score: 0, phase: 'play', fb: null, log: [], startedAt: Date.now() };
   if (n.kind === 'sorter') { run.items = shuffle(SMS_POOL).slice(0, 8); run.max = 8; run.per = 8000; }
   if (n.kind === 'storm') { run.items = shuffle(SMS_POOL).slice(0, 10); run.max = 10; run.per = 5000; }
+  if (n.kind === 'pick') { run.items = shuffle(SITUATIONS).slice(0, 7); run.max = 7; run.per = 15000; }
   if (n.kind === 'links') { run.items = shuffle(LINK_ROUNDS); run.max = run.items.length; run.per = 12000; }
-  if (n.kind === 'call') { run.items = CALLS; run.max = CALLS.length * 3; run.call = 0; run.shown = 0; run.per = 0; }
+  if (n.kind === 'call') { run.items = n.calls === 'clone' ? CALLS_CLONE : CALLS; run.max = run.items.length * 3; run.call = 0; run.shown = 0; run.per = 0; }
   if (n.kind === 'chat') { run.chat = CHATS[n.id]; run.items = run.chat.steps; run.max = run.items.length; run.hist = []; run.per = 0; }
   gameState().run = run; gameState().diving = null;
   armTimer(); renderOverlay();
@@ -228,6 +281,7 @@ function answer(choice) {
   const item = run.items[run.i];
   let ok = false, why = item.why, end = null, label = '';
   if (run.kind === 'sorter' || run.kind === 'storm') { ok = choice !== null && (choice === 'scam') === item.scam; label = item.scam ? 'That was a scam' : 'That one was legit'; }
+  if (run.kind === 'pick') { ok = choice !== null && +choice === item.answer; label = ok ? 'Safe move' : 'Safer: ' + item.options[item.answer]; }
   if (run.kind === 'links') { ok = choice !== null && +choice === item.answer; label = `Real one: ${item.options[item.answer]}`; }
   if (run.kind === 'chat') { const c = item.choices[+choice]; ok = !!c?.good; why = c ? c.why : 'Time ran out.'; end = c?.end || null; run.hist.push({ them: item.them, you: c ? c.t : '(no reply)', ok }); label = ok ? 'Safe move' : 'Risky move'; }
   if (ok) run.score++;
@@ -289,6 +343,11 @@ function arenaHtml() {
     const it = run.items[run.i];
     stage = `<div class="prompt fly-in" key="${run.i}"><div class="eyebrow">Which link is really</div><div class="big">${esc(it.brand)}?</div></div>
       <div class="links">${it.options.map((u, i) => `<button class="link ${run.fb ? (i === it.answer ? 'real' : 'fake') : ''}" data-act="questAnswer" data-val="${i}" ${run.fb ? 'disabled' : ''}>${ico('globe')}<span>${esc(u)}</span></button>`).join('')}</div>${fb}`;
+  }
+  if (run.kind === 'pick') {
+    const it = run.items[run.i];
+    stage = `<div class="prompt sit fly-in" key="${run.i}"><div class="eyebrow">What do you do?</div><div class="big">${esc(it.q)}</div></div>
+      <div class="links opts">${it.options.map((o, i) => `<button class="link ${run.fb ? (i === it.answer ? 'real' : 'fake') : ''}" data-act="questAnswer" data-val="${i}" ${run.fb ? 'disabled' : ''}>${ico(run.fb && i === it.answer ? 'checkCircle' : 'chevR')}<span>${esc(o)}</span></button>`).join('')}</div>${fb}`;
   }
   if (run.kind === 'call') {
     const call = run.items[run.call];
