@@ -125,7 +125,7 @@ class Buddy {
     this.face = buildFace(e); this.root.add(this.face); this.emotion = e;
   }
   setState({ health, reaction }) { this.setEmotion(reaction || emotionFromHealth(health)); }
-  face(dx) { this.yaw = dx > 0 ? -0.55 : dx < 0 ? 0.55 : 0; }
+  turn(dx) { this.yaw = dx > 0 ? -0.55 : dx < 0 ? 0.55 : 0; }
   attach(el, state) {
     if (state) this.setState(state);
     if (!el) return;
@@ -162,7 +162,7 @@ let buddy = null;
 window.Buddy3D = {
   attach(el, state) { try { if (!buddy) buddy = new Buddy(); buddy.attach(el, state); return true; } catch (e) { console.warn('[buddy3d]', e.message); return false; } },
   setState(state) { if (buddy) buddy.setState(state); },
-  face(dx) { if (buddy) buddy.face(dx); },
+  face(dx) { if (buddy) buddy.turn(dx); },
   emotionFromHealth,
 };
 document.dispatchEvent(new Event('buddy3d-ready'));
