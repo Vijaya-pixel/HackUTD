@@ -478,3 +478,9 @@ textarea.area{width:100%;border:1px solid var(--line);border-radius:12px;padding
 .stage .bubble.quiz .qr p{color:var(--muted);margin-top:4px;line-height:1.4;font-weight:400}
 .stage .bubble.quiz.right{border-color:var(--green)}
 .stage .bubble.quiz.wrong{border-color:var(--red)}
+
+/* 3D mascot container: the SVG inside is the fallback until the WebGL canvas is attached */
+.petwrap{height:auto;min-height:220px;padding:0}
+.petwrap .pet3d{position:relative;width:100%;height:240px;display:flex;align-items:center;justify-content:center;touch-action:pan-y}
+.petwrap .pet3d .buddy-canvas{display:block;width:100%!important;height:100%!important}
+.petwrap .pet3d.live > .pet{display:none}

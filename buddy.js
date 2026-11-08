@@ -110,12 +110,15 @@ function petStage() {
   const a = S.petAnim, trap = S.trap;
   const from = a && a.from != null ? a.from : P.health;
   setTimeout(() => { const f = document.querySelector('.hbar .fill[data-to]'); if (f) requestAnimationFrame(() => { f.style.width = f.dataset.to + '%'; }); }, 0);
+  // 3D mascot reactions: temporary expressions on top of the health-driven one
+  const reaction = a?.kind === 'heal' ? 'celebrating' : a && a.kind !== 'heal' ? 'surprised' : (S.quiz?.open && !S.quiz.result) ? 'determined' : null;
+  setTimeout(() => { const el = document.querySelector('.petwrap .pet3d'); if (el && window.Buddy3D && window.Buddy3D.attach(el, { health: P.health, reaction })) el.classList.add('live'); }, 0);
   const pillCls = P.health >= 60 ? 'green' : P.health >= 40 ? '' : 'amber';
   const barCls = P.health >= 60 ? 'good' : P.health >= 40 ? 'mid' : 'low';
   return `
   <div class="card stage mood-${P.mood} ${a ? 'anim-' + a.kind : ''}">
     <div class="between"><div><div class="eyebrow">ScamShield Buddy</div><div class="big">Level ${P.level}</div></div><span class="dotpill ${pillCls}">${P.status}</span></div>
-    <div class="petwrap">${petSvg(P.mood)}${a && a.delta ? `<div class="float ${a.delta < 0 ? 'neg' : 'pos'}">${a.delta > 0 ? '+' : ''}${a.delta}</div>` : ''}<div class="flash"></div></div>
+    <div class="petwrap"><div class="pet3d">${petSvg(P.mood)}</div>${a && a.delta ? `<div class="float ${a.delta < 0 ? 'neg' : 'pos'}">${a.delta > 0 ? '+' : ''}${a.delta}</div>` : ''}<div class="flash"></div></div>
     ${bubbleHtml(P, a, trap)}
     <div class="hbar"><div class="lbl"><span>Energy</span><b>${P.health}/100</b></div><div class="bar"><div class="fill ${barCls}" style="width:${from}%" data-to="${P.health}"></div></div></div>
     <div class="xbar"><div class="lbl"><span>XP to level ${P.level + 1}</span><b>${P.xpInLevel}/100</b></div><div class="bar"><div class="fill" style="width:${P.xpInLevel}%"></div></div></div>
@@ -183,3 +186,4 @@ function BUDDY_ACTIONS(v) {
 }
 document.addEventListener('mouseover', e => { const el = e.target.closest && e.target.closest('[data-hover="quizOpen"]'); if (el) openQuiz(); });
 setInterval(quizTick, 1000);
+document.addEventListener('buddy3d-ready', () => { if (typeof current === 'function' && current() === 'learn') render(); });
