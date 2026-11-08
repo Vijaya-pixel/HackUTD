@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { serve } from "@hono/node-server";
+import { serve, serveStatic } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -76,6 +76,10 @@ app.route("/", createRedirectRouter(channel));
 app.route("/", createPhotonWebhookRouter(channel));
 
 app.get("/health", (c) => c.json({ ok: true, mode: isDemo ? "demo" : "live", channel: usePhoton ? "photon" : "simulator" }));
+
+// Serve test UI
+app.use("/test-ui.html", serveStatic({ path: "./public/test-ui.html" }));
+app.get("/", (c) => c.redirect("/test-ui.html"));
 
 // ── TTL cleanup job (every hour) ──────────────────────────────────────────────
 setInterval(() => {

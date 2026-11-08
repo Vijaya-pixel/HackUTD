@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Safe Signal — Test UI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --magenta: #e20074;
+      --magenta-dark: #b3005c;
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --surface2: #242438;
+      --border: #2e2e4a;
+      --text: #e8e8f0;
+      --muted: #8888aa;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* Layout */
+    .app { display: grid; grid-template-columns: 320px 1fr; grid-template-rows: 56px 1fr; height: 100vh; }
+    .topbar { grid-column: 1/-1; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 12px; }
+    .topbar h1 { font-size: 18px; font-weight: 700; }
+    .topbar .pill { background: var(--magenta); color: #fff; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .5px; }
+    .topbar .health { margin-left: auto; font-size: 12px; color: var(--muted); }
+    .topbar .health.ok { color: var(--green); }
+    .topbar .health.err { color: var(--red); }
+
+    .sidebar { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+    .main { overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Cards */
+    .card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .card-header h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+    .card-body { padding: 16px; }
+
+    /* Forms */
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    input, select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); font-size: 14px; outline: none; transition: border-color .15s; }
+    input:focus, select:focus { border-color: var(--magenta); }
+    .field { margin-bottom: 12px; }
+
+    .interest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .interest-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--muted); cursor: pointer; text-align: center; transition: all .15s; user-select: none; }
+    .interest-btn.active { background: var(--magenta); border-color: var(--magenta); color: #fff; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; transition: opacity .15s, transform .1s; }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--magenta); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--magenta-dark); }
+    .btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+    .btn-secondary:hover:not(:disabled) { border-color: var(--magenta); color: var(--magenta); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-full { width: 100%; }
+
+    /* Status badges */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; }
+    .badge-green { background: rgba(34,197,94,.15); color: var(--green); }
+    .badge-red { background: rgba(239,68,68,.15); color: var(--red); }
+    .badge-yellow { background: rgba(245,158,11,.15); color: var(--yellow); }
+    .badge-blue { background: rgba(99,102,241,.15); color: #818cf8; }
+
+    /* Chat */
+    .chat-window { height: 380px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--bg); border-radius: 8px; }
+    .bubble { max-width: 78%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-break: break-word; }
+    .bubble.scammer { background: var(--surface2); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 4px; }
+    .bubble.user { background: var(--magenta); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+    .bubble .ts { font-size: 10px; opacity: .6; margin-top: 4px; }
+    .bubble .sender { font-size: 10px; color: var(--muted); margin-bottom: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .chat-input-row { display: flex; gap: 8px; }
+    .chat-input-row input { flex: 1; }
+
+    /* Lesson */
+    .lesson-section { margin-bottom: 16px; }
+    .lesson-section h3 { font-size: 12px; color: var(--magenta); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; font-weight: 600; }
+    .lesson-section p, .lesson-section li { font-size: 14px; color: var(--muted); line-height: 1.6; }
+    .lesson-section ul { padding-left: 18px; }
+    .rule-box { background: var(--surface); border-left: 3px solid var(--magenta); border-radius: 0 8px 8px 0; padding: 12px 16px; }
+    .rule-box p { color: var(--text) !important; font-size: 15px; font-weight: 500; }
+
+    .replay-bubble { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; font-size: 13px; line-height: 1.5; }
+    .replay-bubble.user-bubble { border-left: 3px solid var(--magenta); }
+    .replay-bubble .flag-tag { display: inline-block; background: rgba(226,0,116,.15); color: var(--magenta); font-size: 10px; padding: 2px 6px; border-radius: 999px; margin: 4px 2px 0; cursor: help; }
+
+    /* Sessions list */
+    .session-item { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; cursor: pointer; transition: border-color .15s; display: flex; align-items: center; justify-content: space-between; }
+    .session-item:hover { border-color: var(--magenta); }
+    .session-item.active-session { border-color: var(--magenta); background: rgba(226,0,116,.05); }
+    .session-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* Detection */
+    .detect-result { margin-top: 12px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 13px; }
+    .detect-score { font-size: 28px; font-weight: 700; }
+    .flag-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .flag-cat { font-size: 11px; color: var(--magenta); font-weight: 600; min-width: 160px; }
+
+    /* Skills */
+    .skill-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .skill-label { font-size: 12px; color: var(--muted); width: 160px; flex-shrink: 0; }
+    .skill-bar-bg { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .skill-bar-fill { height: 100%; border-radius: 4px; transition: width .4s; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .tab { padding: 8px 16px; font-size: 13px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; cursor: pointer; transition: color .15s; margin-bottom: -1px; }
+    .tab.active { color: var(--magenta); border-bottom-color: var(--magenta); }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 13px; max-width: 320px; transform: translateY(80px); opacity: 0; transition: all .2s; z-index: 1000; }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: var(--green); }
+    #toast.error { border-color: var(--red); }
+
+    .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 12px; font-family: monospace; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#e20074"/><path d="M8 12l3 3 5-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h1>Safe Signal</h1>
+    <span class="pill">Education</span>
+    <span class="pill" style="background:#3730a3">Test UI</span>
+    <span id="health-indicator" class="health">checking…</span>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <!-- Opt-in -->
+    <div class="card">
+      <div class="card-header"><h2>1. Opt In</h2></div>
+      <div class="card-body">
+        <div class="field">
+          <label>Phone (E.164)</label>
+          <input id="phone" value="+15550010001" placeholder="+12125550100" />
+        </div>
+        <div class="field">
+          <label>Channel</label>
+          <select id="channel">
+            <option value="simulator" selected>Simulator (no Photon needed)</option>
+            <option value="imessage">iMessage (requires Photon)</option>
+            <option value="sms">SMS</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Interests</label>
+          <div class="interest-grid" id="interests">
+            <div class="interest-btn active" data-val="shopping">Shopping</div>
+            <div class="interest-btn active" data-val="package_delivery">Packages</div>
+            <div class="interest-btn" data-val="driving">Driving</div>
+            <div class="interest-btn" data-val="career">Career</div>
+            <div class="interest-btn active" data-val="finance">Finance</div>
+            <div class="interest-btn" data-val="family">Family</div>
+            <div class="interest-btn active" data-val="mobile_account">T-Mobile</div>
+            <div class="interest-btn" data-val="travel">Travel</div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="doOptIn()">Enable Practice</button>
+        <div id="user-id-display" style="margin-top:10px;font-size:11px;color:var(--muted);display:none">
+          userId: <code id="user-id-val"></code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trigger -->
+    <div class="card">
+      <div class="card-header"><h2>2. Trigger Session</h2></div>
+      <div class="card-body">
+        <div class="field">
+          <label>Scenario (blank = random)</label>
+          <select id="scenario-pick">
+            <option value="">Random by interests</option>
+            <option value="parcelgo-delivery-1">ParcelGo Delivery (easy)</option>
+            <option value="parcelgo-delivery-2">ParcelGo Delivery (hard)</option>
+            <option value="tollpass-toll-1">TollPass Toll (easy)</option>
+            <option value="tollpass-toll-2">TollPass Toll (hard)</option>
+            <option value="nextstep-job-1">Job Offer (easy)</option>
+            <option value="nextstep-job-2">Job Offer (hard)</option>
+            <option value="family-emergency-1">Family Emergency (easy)</option>
+            <option value="family-emergency-2">Family Emergency (hard)</option>
+            <option value="northline-bank-1">Bank Alert (easy)</option>
+            <option value="northline-bank-2">Bank Alert (hard)</option>
+            <option value="tmobile-account-1">T-Mobile Account (easy)</option>
+            <option value="tmobile-account-2">T-Mobile Account (hard)</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="doTrigger()">Send Practice Now</button>
+      </div>
+    </div>
+
+    <!-- Sessions -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Sessions</h2>
+        <button class="btn btn-secondary btn-sm" onclick="loadSessions()">Refresh</button>
+      </div>
+      <div class="card-body" id="sessions-list" style="max-height:220px;overflow-y:auto">
+        <p style="font-size:12px;color:var(--muted)">Opt in first…</p>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Main area -->
+  <main class="main">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('chat')">💬 Simulator Chat</div>
+      <div class="tab" onclick="switchTab('lesson')">📚 Lesson</div>
+      <div class="tab" onclick="switchTab('detect')">🔍 Detect</div>
+      <div class="tab" onclick="switchTab('skills')">📊 Skills</div>
+    </div>
+
+    <!-- Chat tab -->
+    <div id="tab-chat">
+      <div class="card">
+        <div class="card-header">
+          <h2>Simulator Chat</h2>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span id="session-badge" class="badge badge-blue" style="display:none"></span>
+            <button class="btn btn-secondary btn-sm" onclick="pollMessages()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="chat-window" id="chat-window">
+            <p style="font-size:13px;color:var(--muted);text-align:center;margin:auto">Trigger a practice session to start…</p>
+          </div>
+          <div class="chat-input-row" style="margin-top:12px">
+            <input id="chat-input" placeholder="Type a reply… (or 'scam' to catch it, 'STOP PRACTICE' to opt out)" onkeydown="if(event.key==='Enter')sendMsg()" />
+            <button class="btn btn-primary" onclick="sendMsg()">Send</button>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="quickReply('Ok, what do I need to do?')">👍 Engage</button>
+            <button class="btn btn-secondary btn-sm" onclick="quickReply('This is a scam')">🛑 Catch it</button>
+            <button class="btn btn-secondary btn-sm" onclick="quickReply('I will forward this to 7726')">📢 Report 7726</button>
+            <button class="btn btn-secondary btn-sm" onclick="quickReply('STOP PRACTICE')">❌ Opt out</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Practice link simulator -->
+      <div class="card" id="link-card" style="display:none">
+        <div class="card-header"><h2>Practice Link</h2></div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">The scammer sent a link. Click it to simulate tapping it:</p>
+          <a id="practice-link" href="#" target="_blank" class="btn btn-primary" onclick="handleLinkClick(event)">🔗 Tap the link</a>
+          <p style="font-size:11px;color:var(--muted);margin-top:8px">This will record a "fell for it" outcome and open the lesson.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lesson tab -->
+    <div id="tab-lesson" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <h2>Lesson</h2>
+          <button class="btn btn-secondary btn-sm" onclick="loadLesson()">Load Lesson</button>
+        </div>
+        <div class="card-body" id="lesson-content">
+          <p style="font-size:13px;color:var(--muted)">Complete or view a session, then click Load Lesson.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detect tab -->
+    <div id="tab-detect" style="display:none">
+      <div class="card">
+        <div class="card-header"><h2>Detection Tester</h2></div>
+        <div class="card-body">
+          <div class="field">
+            <label>Paste a suspicious message</label>
+            <textarea id="detect-input" rows="4" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;resize:vertical;outline:none" placeholder="PARCELGO: Your package could not be delivered..."></textarea>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer">
+              <input type="checkbox" id="sender-known" /> Sender is known
+            </label>
+          </div>
+          <button class="btn btn-primary" onclick="doDetect()">Analyze Message</button>
+
+          <!-- Quick test samples -->
+          <div style="margin-top:12px">
+            <p style="font-size:11px;color:var(--muted);margin-bottom:6px">Quick samples:</p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-secondary btn-sm" onclick="setDetectSample('scam1')">📦 Package fee</button>
+              <button class="btn btn-secondary btn-sm" onclick="setDetectSample('scam2')">🏦 Bank alert</button>
+              <button class="btn btn-secondary btn-sm" onclick="setDetectSample('scam3')">👨‍💼 Job offer</button>
+              <button class="btn btn-secondary btn-sm" onclick="setDetectSample('legit1')">✅ Real OTP</button>
+              <button class="btn btn-secondary btn-sm" onclick="setDetectSample('legit2')">📱 T-Mobile bill</button>
+            </div>
+          </div>
+
+          <div id="detect-result" class="detect-result" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skills tab -->
+    <div id="tab-skills" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <h2>Skills Summary</h2>
+          <button class="btn btn-secondary btn-sm" onclick="loadSkills()">Load</button>
+        </div>
+        <div class="card-body" id="skills-content">
+          <p style="font-size:13px;color:var(--muted)">Opt in and load skills.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = '';  // same origin
+let state = { userId: null, sessionId: null, token: null };
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = '', 3000);
+}
+
+async function api(method, path, body) {
+  try {
+    const res = await fetch(API + path, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || JSON.stringify(data));
+    return data;
+  } catch (e) {
+    toast(e.message, 'error');
+    throw e;
+  }
+}
+
+function fmtTime(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function switchTab(name) {
+  ['chat','lesson','detect','skills'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    el.classList.toggle('active', ['chat','lesson','detect','skills'][i] === name);
+  });
+}
+
+// ── Health check ──────────────────────────────────────────────────────────────
+async function checkHealth() {
+  const el = document.getElementById('health-indicator');
+  try {
+    const d = await fetch('/health').then(r => r.json());
+    el.textContent = `● Server OK · ${d.channel} mode`;
+    el.className = 'health ok';
+  } catch {
+    el.textContent = '● Server offline';
+    el.className = 'health err';
+  }
+}
+checkHealth();
+setInterval(checkHealth, 10000);
+
+// ── Interest toggles ──────────────────────────────────────────────────────────
+document.querySelectorAll('.interest-btn').forEach(btn => {
+  btn.addEventListener('click', () => btn.classList.toggle('active'));
+});
+
+function getInterests() {
+  return [...document.querySelectorAll('.interest-btn.active')].map(b => b.dataset.val);
+}
+
+// ── Opt-in ────────────────────────────────────────────────────────────────────
+async function doOptIn() {
+  const phone = document.getElementById('phone').value.trim();
+  const channel = document.getElementById('channel').value;
+  const interests = getInterests();
+  if (!phone) return toast('Enter a phone number', 'error');
+  if (interests.length === 0) return toast('Select at least one interest', 'error');
+
+  const data = await api('POST', '/api/optin', { phone, channel, interests, maxPerDay: 5 });
+  state.userId = data.userId;
+  document.getElementById('user-id-val').textContent = data.userId;
+  document.getElementById('user-id-display').style.display = '';
+  toast(`Opted in! userId: ${data.userId}`, 'success');
+  loadSessions();
+}
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+async function loadSessions() {
+  if (!state.userId) return;
+  const data = await api('GET', `/api/sessions/${state.userId}`);
+  const el = document.getElementById('sessions-list');
+  if (!data.sessions.length) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--muted)">No sessions yet.</p>';
+    return;
+  }
+  el.innerHTML = data.sessions.map(s => {
+    const badge = s.outcome === 'caught'
+      ? '<span class="badge badge-green">Caught</span>'
+      : s.outcome === 'fell_for_it'
+      ? '<span class="badge badge-red">Fell for it</span>'
+      : s.state.includes('ended')
+      ? '<span class="badge badge-yellow">Ended</span>'
+      : '<span class="badge badge-blue">Active</span>';
+    return `<div class="session-item ${state.sessionId === s.id ? 'active-session' : ''}" onclick="selectSession('${s.id}')">
+      <div>
+        <div style="font-size:13px;font-weight:500">${s.scenarioId}</div>
+        <div class="session-meta">${fmtTime(s.startedAt)} · ${s.state}</div>
+      </div>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+
+function selectSession(id) {
+  state.sessionId = id;
+  document.getElementById('session-badge').textContent = id.slice(0, 8) + '…';
+  document.getElementById('session-badge').style.display = '';
+  loadSessions();
+  pollMessages();
+  toast(`Session selected: ${id.slice(0, 8)}…`);
+}
+
+// ── Trigger practice ──────────────────────────────────────────────────────────
+async function doTrigger() {
+  if (!state.userId) return toast('Opt in first', 'error');
+  const scenarioId = document.getElementById('scenario-pick').value || undefined;
+  const data = await api('POST', '/api/practice/trigger', { userId: state.userId, scenarioId });
+  state.sessionId = data.sessionId;
+  state.token = data.token;
+  document.getElementById('session-badge').textContent = data.sessionId.slice(0, 8) + '…';
+  document.getElementById('session-badge').style.display = '';
+  toast('Practice started!', 'success');
+  setTimeout(pollMessages, 500);
+  loadSessions();
+  switchTab('chat');
+}
+
+// ── Simulator chat ────────────────────────────────────────────────────────────
+let lastMsgCount = 0;
+
+async function pollMessages() {
+  if (!state.sessionId) return;
+  const data = await api('GET', `/api/simulator/${state.sessionId}/messages`);
+  renderChat(data.messages);
+}
+
+function renderChat(msgs) {
+  const win = document.getElementById('chat-window');
+  if (!msgs.length) {
+    win.innerHTML = '<p style="font-size:13px;color:var(--muted);text-align:center;margin:auto">No messages yet…</p>';
+    return;
+  }
+
+  win.innerHTML = msgs.map(m => {
+    const cls = m.role === 'scammer' ? 'scammer' : 'user';
+    const sender = m.role === 'scammer' ? '🤖 Scammer' : '👤 You';
+    return `<div class="bubble ${cls}">
+      <div class="sender">${sender}</div>
+      ${escHtml(m.text)}
+      <div class="ts">${new Date(m.ts).toLocaleTimeString()}</div>
+    </div>`;
+  }).join('');
+
+  win.scrollTop = win.scrollHeight;
+
+  // Show link card if any scammer message contains our domain
+  const hasLink = msgs.some(m => m.role === 'scammer' && m.text.includes('/p/'));
+  if (hasLink && state.token) {
+    const linkCard = document.getElementById('link-card');
+    linkCard.style.display = '';
+    document.getElementById('practice-link').href = `/p/${state.token}`;
+  }
+
+  if (msgs.length !== lastMsgCount) lastMsgCount = msgs.length;
+}
+
+async function sendMsg() {
+  if (!state.sessionId) return toast('Start a session first', 'error');
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  const data = await api('POST', '/api/simulator/send', { sessionId: state.sessionId, text });
+  renderChat(data.messages);
+  loadSessions();
+}
+
+function quickReply(text) {
+  document.getElementById('chat-input').value = text;
+  sendMsg();
+}
+
+function handleLinkClick(e) {
+  e.preventDefault();
+  const url = `/p/${state.token}`;
+  window.open(url, '_blank');
+  setTimeout(() => { pollMessages(); loadSessions(); loadLesson(); switchTab('lesson'); }, 1000);
+}
+
+// ── Lesson ────────────────────────────────────────────────────────────────────
+async function loadLesson() {
+  if (!state.sessionId) return toast('Select a session first', 'error');
+  const data = await api('GET', `/api/lesson/${state.sessionId}`);
+  renderLesson(data);
+}
+
+function renderLesson(lesson) {
+  const outcomeEmoji = lesson.outcome === 'caught' ? '🎉' : '🛑';
+  const outcomeText = lesson.outcome === 'caught' ? 'You caught it!' : 'You fell for this one.';
+  const outcomeBadge = lesson.outcome === 'caught'
+    ? '<span class="badge badge-green">Caught it</span>'
+    : '<span class="badge badge-red">Fell for it</span>';
+
+  const replayHtml = (lesson.replay || []).map(m => {
+    const flags = (m.redFlags || []).map(f =>
+      `<span class="flag-tag" title="${escHtml(f.explanation)}">${f.category.replace(/_/g,' ')}</span>`
+    ).join('');
+    return `<div class="replay-bubble ${m.role === 'user' ? 'user-bubble' : ''}">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;font-weight:600">${m.role === 'scammer' ? '🤖 Scammer' : '👤 You'}</div>
+      ${escHtml(m.text)}
+      ${flags}
+    </div>`;
+  }).join('');
+
+  const mistakesHtml = (lesson.mistakes || []).length
+    ? `<ul>${(lesson.mistakes || []).map(m => `<li>${escHtml(m)}</li>`).join('')}</ul>`
+    : '<p>No major mistakes! 🎉</p>';
+
+  const strengthsHtml = `<ul>${(lesson.strengths || []).map(s => `<li>${escHtml(s)}</li>`).join('')}</ul>`;
+
+  document.getElementById('lesson-content').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <span style="font-size:36px">${outcomeEmoji}</span>
+      <div>
+        <div style="font-size:18px;font-weight:600">${outcomeText}</div>
+        <div style="margin-top:4px">${outcomeBadge}</div>
+      </div>
+    </div>
+
+    <div class="lesson-section">
+      <h3>Conversation Replay</h3>
+      ${replayHtml || '<p>No messages recorded.</p>'}
+      <p style="font-size:11px;color:var(--muted);margin-top:6px">Hover pink tags to see red flag explanations.</p>
+    </div>
+
+    <div class="lesson-section">
+      <h3>Your Key Mistakes</h3>
+      ${mistakesHtml}
+    </div>
+
+    <div class="lesson-section">
+      <h3>What You Did Well</h3>
+      ${strengthsHtml}
+    </div>
+
+    <div class="lesson-section">
+      <h3>Rule to Remember</h3>
+      <div class="rule-box"><p>${escHtml(lesson.ruleToRemember || '')}</p></div>
+    </div>
+
+    <div class="lesson-section">
+      <h3>Next Practice Target</h3>
+      <p>We'll focus on: <strong style="color:var(--magenta)">${(lesson.nextWeakCategory || '').replace(/_/g,' ')}</strong></p>
+    </div>
+
+    <div style="margin-top:16px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:10px">
+      <div style="font-size:12px;color:var(--green);font-weight:600;text-transform:uppercase;margin-bottom:8px">Protect Yourself Now</div>
+      <div style="font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px">
+        <div>📞 <strong>Scam Block:</strong> Dial <code>#662#</code> from your T-Mobile phone</div>
+        <div>🔒 <strong>SIM Protection:</strong> T-Life app → Account → SIM Protection</div>
+        <div>📢 <strong>Report real scams:</strong> Forward to <code>7726</code></div>
+      </div>
+    </div>
+  `;
+  switchTab('lesson');
+}
+
+// ── Detection ─────────────────────────────────────────────────────────────────
+const SAMPLES = {
+  scam1: 'PARCELGO: Your package #PG847291 could not be delivered. A $3.50 redelivery fee is required within 24 hrs or the package will be returned. Pay here: http://parcel-redeliver.link/pay',
+  scam2: 'NORTHLINE BANK ALERT: Suspicious login detected on your account from device in TX. If this was NOT you, verify your identity immediately: http://northline-secure-login.com',
+  scam3: 'NextStep Careers: You\'ve been selected for a remote data entry position — $850/wk, flexible hours, no experience required. Reply YES to claim your spot!',
+  legit1: 'Your T-Mobile verification code is 847291. It expires in 10 minutes. Do not share this code with anyone.',
+  legit2: 'T-Mobile: Your AutoPay payment of $65.00 is scheduled for the 15th. Manage at t-mobile.com or in the T-Mobile app.',
+};
+
+function setDetectSample(key) {
+  document.getElementById('detect-input').value = SAMPLES[key] || '';
+}
+
+async function doDetect() {
+  const text = document.getElementById('detect-input').value.trim();
+  if (!text) return toast('Enter a message to analyze', 'error');
+  const senderKnown = document.getElementById('sender-known').checked;
+
+  const data = await api('POST', '/api/detect', { text, senderKnown });
+  renderDetectResult(data);
+}
+
+function renderDetectResult(r) {
+  const el = document.getElementById('detect-result');
+  el.style.display = '';
+
+  const colorMap = { scam: 'var(--red)', suspicious: 'var(--yellow)', likely_safe: 'var(--green)' };
+  const emojiMap = { scam: '🛑', suspicious: '⚠️', likely_safe: '✅' };
+
+  const flagsHtml = r.redFlags.length
+    ? r.redFlags.map(f => `
+        <div class="flag-row">
+          <div class="flag-cat">${(f.category || '').replace(/_/g,' ')}</div>
+          <div style="font-size:12px;color:var(--muted)">${escHtml(f.explanation || '')}</div>
+        </div>`).join('')
+    : '<p style="font-size:12px;color:var(--muted)">No specific flags detected.</p>';
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+      <div class="detect-score" style="color:${colorMap[r.label]}">${emojiMap[r.label]} ${r.label.replace(/_/g,' ')}</div>
+      <div style="font-size:13px;color:var(--muted)">confidence: <strong style="color:${colorMap[r.label]}">${(r.confidence * 100).toFixed(0)}%</strong></div>
+    </div>
+    <div style="margin-bottom:10px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600;text-transform:uppercase">Reasons</div>
+      ${(r.reasons || []).map(re => `<div style="font-size:12px;color:var(--muted);padding:3px 0">• ${escHtml(re)}</div>`).join('') || '<div style="font-size:12px;color:var(--muted)">None</div>'}
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase">Red Flags (${r.redFlags.length})</div>
+    ${flagsHtml}
+  `;
+}
+
+// ── Skills ────────────────────────────────────────────────────────────────────
+async function loadSkills() {
+  if (!state.userId) return toast('Opt in first', 'error');
+  const data = await api('GET', `/api/sessions/${state.userId}/skills`);
+  renderSkills(data);
+}
+
+function renderSkills(s) {
+  const el = document.getElementById('skills-content');
+  const statCards = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:28px;font-weight:700">${s.totalSessions}</div>
+        <div style="font-size:11px;color:var(--muted)">Total sessions</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:28px;font-weight:700;color:var(--green)">${s.caught}</div>
+        <div style="font-size:11px;color:var(--muted)">Caught</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:28px;font-weight:700;color:var(--red)">${s.fellFor}</div>
+        <div style="font-size:11px;color:var(--muted)">Fell for</div>
+      </div>
+    </div>`;
+
+  const barsHtml = (s.categoryStats || []).map(cs => {
+    const pct = Math.round((cs.score || 0) * 100);
+    const color = pct >= 70 ? 'var(--green)' : pct >= 40 ? 'var(--yellow)' : 'var(--red)';
+    return `<div class="skill-bar-row">
+      <div class="skill-label">${(cs.category || '').replace(/_/g,' ')}</div>
+      <div class="skill-bar-bg"><div class="skill-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div style="font-size:12px;color:var(--muted);min-width:35px;text-align:right">${pct}%</div>
+    </div>`;
+  }).join('');
+
+  const weakest = s.weakestCategory
+    ? `<div style="margin-top:12px;padding:10px 14px;background:rgba(226,0,116,.08);border:1px solid rgba(226,0,116,.2);border-radius:8px;font-size:13px">
+        🎯 <strong>Next focus:</strong> ${(s.weakestCategory || '').replace(/_/g,' ')}
+       </div>`
+    : '';
+
+  el.innerHTML = statCards + barsHtml + weakest;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Auto-poll when session is active
+setInterval(() => {
+  if (state.sessionId) pollMessages();
+}, 3000);
+</script>
+</body>
+</html>
