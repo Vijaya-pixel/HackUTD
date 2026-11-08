@@ -902,7 +902,6 @@ body{display:block;min-height:100dvh;background:var(--bg)}
 .quest .signpost{left:8px;right:auto;bottom:10px}
 
 /* ---------- Learn = the game: one full-screen background, no scrolling, padded play area ---------- */
-.screen:has(.quest){background:linear-gradient(180deg,#FFD7EC 0%,#FBE9F3 48%,#F3EEFA 100%)}
 #content:has(.quest){background:transparent;overflow:hidden}
 #content:has(.quest) > .quest{flex:1 1 auto;min-height:0}
 .quest .hud,.quest .hud.one{background:transparent}
@@ -920,3 +919,14 @@ body{display:block;min-height:100dvh;background:var(--bg)}
 /* locks: just the icon, no gray disc; the points badges keep their pill */
 .quest .cloudnode.locked .orb{background:transparent;box-shadow:none;color:#A2A2AA}
 .quest .cloudnode.locked .orb svg{width:24px;height:24px}
+/* Title and energy bar stay on the app background; the game background starts under the bar and runs to the bottom edge, behind the nav */
+.quest .map{isolation:isolate}
+.quest .map::before{content:"";position:absolute;z-index:-1;left:0;right:0;top:0;bottom:calc(-104px - env(safe-area-inset-bottom, 0px));background:linear-gradient(180deg,#FFD7EC 0%,#FBE9F3 48%,#F3EEFA 100%)}
+
+/* Call transcript: bubbles sit directly on the call background, no frosted panel and no bubble outlines */
+.call .transcript{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;border:0;border-radius:0;padding:0}
+.call .bubble.them,.call .bubble.us{border:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+.call .bubble.them{background:rgba(255,255,255,.14)}
+.call .bubble.us{background:rgba(255,255,255,.24)}
+.quest .map::before{width:auto;height:auto;transform:none}
+.quest .map::after{display:none}
