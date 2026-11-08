@@ -116,35 +116,70 @@ async function deliver(session, text) {
 }
 
 /* ---------- engine ---------- */
+/* ---------- personal, link-first practice texts ----------
+   A believable practice scam is short, about something that fits this person, and puts the link in front of
+   them right away. It never asks for a PIN, code, SSN or card: tapping the link is the trap, replying is not. */
+const ASKS = /\b(pin|one[- ]time|otp|verification code|security code|6[- ]digit|4[- ]digit|ssn|social security|card number|cvv|password|passcode|read (me|back) the code)\b/i;
+const MAX_PUSHES = 2; // scammer follow-ups after the opener before the practice ends on its own
+const INTEREST_HINT = { mobile_account: 'their T-Mobile account and phone', package_delivery: 'a package they are waiting on', finance: 'their bank card', driving: 'tolls and driving', career: 'a job they applied for', family: 'family', shopping: 'a recent online order', travel: 'an upcoming trip' };
+const PUSH_FALLBACK = {
+  package_delivery: n => `${n}, the driver can't release it without the address confirmation. Takes 20 seconds: {{PRACTICE_LINK}}`,
+  toll_fee: n => `${n}, the $6.90 balance goes to collections at midnight. You can clear it here: {{PRACTICE_LINK}}`,
+  job_offer: n => `${n}, the hiring manager asked me to get your onboarding done today. Here's the form again: {{PRACTICE_LINK}}`,
+  family_emergency: n => `${n} please, I can't talk right now. Just use this to send it: {{PRACTICE_LINK}}`,
+  bank_alert: n => `${n}, the hold stays on the card until you confirm the charge wasn't you: {{PRACTICE_LINK}}`,
+  tmobile_account: n => `${n}, your line is scheduled for suspension tonight. Keep it active here: {{PRACTICE_LINK}}`,
+};
+async function personaFor(lineId) {
+  const line = await one('SELECT name, device FROM lines WHERE id = $1', [lineId]);
+  const consent = await one('SELECT interests FROM learn_consents WHERE line_id = $1', [lineId]);
+  const first = (line?.name || 'there').split(' ')[0];
+  const interests = (consent?.interests || []).map(i => INTEREST_HINT[i] || i);
+  const hour = new Date().getHours();
+  return { first, device: line?.device || 'phone', interests, daypart: hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening', weekday: new Date().toLocaleDateString('en-US', { weekday: 'long' }) };
+}
+const personaBlock = p => `TARGET: first name ${p.first}, uses a ${p.device}. Things they care about: ${p.interests.join(', ') || 'their phone and everyday errands'}. It is ${p.weekday} ${p.daypart}.`;
+function okPractice(text, link) {
+  if (!text) return false;
+  const v = validateScammerReply(text);
+  if (!v.ok || ASKS.test(text)) return false;
+  return text.split(link).length === 2; // the practice link exactly once
+}
+async function buildOpener(sc, p, link) {
+  const prompt = `You write the FIRST text message of a scam-awareness practice exercise run by a phone carrier. The person opted in and knows practice texts happen, just not when.
+SCENARIO: ${sc.category} text pretending to be "${sc.brand}". Flavor from the scenario: "${sc.opener.replace('{{PRACTICE_LINK}}', '[link]')}"
+${personaBlock(p)}
+
+Write ONE believable text, like a real SMS: casual, specific, personal (use the first name and one detail that fits them), with a plausible reason and a mild time pressure.
+RULES: under 240 characters. Include this exact link once: ${link} . Never ask for a PIN, code, password, SSN or card number. No other URLs. No emoji. Do not mention training or practice. Output only the message.`;
+  const gen = await generateText(prompt, { timeoutMs: 6000, maxChars: 320 });
+  if (okPractice(gen, link)) return gen.trim();
+  let base = sc.opener.replace('{{PRACTICE_LINK}}', link);
+  if (!base.includes(link)) base = `${base} ${link}`;
+  return base;
+}
+
 export async function startSession(lineId, sc, channel) {
   const id = randomUUID(), token = randomBytes(16).toString('hex');
   const link = `${PUBLIC_URL}/p/${token}`;
-  const opener = sc.opener.replace('{{PRACTICE_LINK}}', link);
+  const opener = await buildOpener(sc, await personaFor(lineId), link);
   await q('INSERT INTO learn_sessions (id, line_id, scenario_id, channel, state, stage_index, token) VALUES ($1,$2,$3,$4,$5,0,$6)', [id, lineId, sc.id, channel, 'hook_sent', token]);
   await saveMessage(id, 'scammer', opener, 'hook', (sc.redFlagsByStage.hook || []).map(f => ({ ...f, startChar: 0, endChar: opener.length })));
   const sent = await deliver({ lineId, channel }, opener);
   return { ...(await getSession(id)), sent };
 }
 
-async function scammerReply(sc, stage, history, link) {
-  const hist = history.map(m => `${m.role === 'scammer' ? 'YOU' : 'TARGET'}: ${m.text}`).join('\n');
-  const prompt = `You are playing a scammer character for a safety training exercise run by a phone carrier.
-SCENARIO: ${sc.category} scam impersonating "${sc.brand}"
-CURRENT STAGE: ${stage.name}
-STAGE GUIDANCE: ${stage.llmGuidance}
-PRACTICE LINK: ${link}
-
-SAFETY RULES (never violate):
-1. Only link to the practice link above, no other URLs
-2. Never ask for real passwords, real card numbers, or real SSNs
-3. Never impersonate real government agencies (IRS, SSA, FBI) or real banks
-4. Keep the message under 300 characters
-5. Do not break character or mention training
+async function scammerReply(sc, stage, history, link, p) {
+  const hist = history.filter(m => m.role !== 'system').map(m => `${m.role === 'scammer' ? 'YOU' : 'TARGET'}: ${m.text}`).join('\n');
+  const prompt = `You are playing the sender of a scam-awareness practice text, run by a phone carrier for a person who opted in.
+SCENARIO: ${sc.category} text pretending to be "${sc.brand}". Tone hint: ${stage.llmGuidance}
+${personaBlock(p)}
 
 CONVERSATION SO FAR:
 ${hist || '(no messages yet)'}
 
-Write ONLY the next scammer text message. No labels, no quotes.`;
+Write the next text. React naturally to what they just said, stay personal and believable, and steer them to tap the link.
+RULES: under 220 characters. Include this exact link once: ${link} . Never ask for a PIN, code, password, SSN or card number, and never ask them to reply with information. No other URLs. No emoji. Never mention training or practice. Output only the message.`;
   return generateText(prompt, { timeoutMs: 6000, maxChars: 320 });
 }
 
@@ -157,15 +192,21 @@ export async function handleUserMessage(sessionId, userText) {
   const det = runRules(userText);
   await saveMessage(sessionId, 'user', userText, s.state, det.flags);
   if (pii.length) {
-    await deliver(s, `🛑 SAFE SIGNAL PRACTICE. This was a practice scam from T-Life.\n\nYou shared: ${pii.join(', ')}. Scammers use this to steal identities and access accounts.\n\nSee your full lesson in T-Life: ${link}`);
     await endSession(s, sc, 'fell_for_it');
+    await deliver(s, `This was a Safe Signal practice text from T-Life. You shared ${pii.join(', ')}, which a real scammer would use right away. Nothing real happened. Your lesson is waiting in T-Life.`);
     return getSession(sessionId);
   }
   if (detectRefusal(userText)) {
-    const flags = [...new Map(Object.values(sc.redFlagsByStage).flat().map(f => [f.category, f])).values()];
     await endSession(s, sc, 'caught');
-    await deliver(s, `🎉 Nice catch! This was a Safe Signal practice scam.\n\nRed flags you spotted:\n${flags.map(f => '• ' + f.explanation).join('\n')}\n\nSee your full lesson: ${link}`);
+    await deliver(s, `Nice catch. That was a Safe Signal practice text from T-Life, and you called it. Buddy got stronger; the lesson is in the app.`);
     await saveMessage(sessionId, 'system', 'Nice catch! This was a Safe Signal practice scam.', 'reveal');
+    return getSession(sessionId);
+  }
+  // Two nudges after the opener, each carrying the link. If they keep replying without tapping, they did not bite.
+  if (s.stageIndex >= MAX_PUSHES) {
+    await endSession(s, sc, 'caught');
+    await deliver(s, `That was a Safe Signal practice text from T-Life. You never tapped the link, which is exactly right. The lesson is in the app.`);
+    await saveMessage(sessionId, 'system', 'Practice over: the link was never tapped.', 'reveal');
     return getSession(sessionId);
   }
   const lastIdx = sc.stages.length - 2; // last stage is reveal
@@ -173,9 +214,12 @@ export async function handleUserMessage(sessionId, userText) {
   const stage = sc.stages[nextIdx];
   const stateOf = { hook: 'hook_sent', engage: 'engaging', escalate: 'escalating', ask: 'link_sent' };
   await setState(sessionId, stateOf[stage.name] || 'engaging', { stageIndex: nextIdx });
-  let reply = await scammerReply(sc, stage, s.messages, link);
-  const v = validateScammerReply(reply || '');
-  if (!v.ok) { if (reply) console.warn('[learn] scammer reply rejected:', v.reason); reply = stage.scriptedFallback.replace('{{PRACTICE_LINK}}', link); }
+  const p = await personaFor(s.lineId);
+  let reply = await scammerReply(sc, stage, s.messages, link, p);
+  if (!okPractice(reply || '', link)) {
+    if (reply) console.warn('[learn] scammer reply replaced (asked for data, or missing the link)');
+    reply = (PUSH_FALLBACK[sc.category] || (n => `${n}, it only takes a minute here: {{PRACTICE_LINK}}`))(p.first).replace('{{PRACTICE_LINK}}', link);
+  }
   await saveMessage(sessionId, 'scammer', reply, stage.id, (sc.redFlagsByStage[stage.id] || []).map(f => ({ ...f, startChar: 0, endChar: reply.length })));
   await deliver(s, reply);
   return getSession(sessionId);
@@ -188,7 +232,7 @@ export async function handleLinkClick(token) {
   await setState(s.id, s.state, { clickedAt: new Date().toISOString() });
   await saveMessage(s.id, 'user', 'Tapped the link', s.state, [{ category: 'suspicious_link_or_sender', startChar: 0, endChar: 15, explanation: 'Tapping a link from an unexpected text is how most credential theft starts' }]);
   await endSession(await getSession(s.id), sc, 'fell_for_it');
-  const reveal = sc.stages[sc.stages.length - 1]?.scriptedFallback || '🛑 PRACTICE SCAM. This was a Safe Signal exercise.';
+  const reveal = 'That link was a Safe Signal practice text from T-Life. Nothing real was shared. Buddy took the hit and has your lesson in the app.';
   await deliver(s, reveal);
   await saveMessage(s.id, 'system', reveal, 'reveal');
   return getSession(s.id);
