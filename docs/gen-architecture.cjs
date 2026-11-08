@@ -40,7 +40,7 @@ box('e_ngrok', 1420, 510, 370, 105, 'ngrok tunnel (HTTPS + WSS)', 'public URL �
 
 /* ---------- server ---------- */
 lane('L4', 'ScamShield API · Node 24 + Hono', 'one process: REST, webhooks, WebSocket media server, event hub, Photon stream', 40, 662, 1780, 392, C.server);
-box('s_api', 70, 720, 300, 150, 'index.js · REST API (45 routes)', 'call state machine:<br>ringing → screening → connected → ended<br>snapshot for reconnecting clients<br>reports, lists, lines, premium', C.server);
+box('s_api', 70, 720, 300, 150, 'index.js · REST API (48 routes)', 'call state machine:<br>ringing → screening → connected → ended<br>snapshot for reconnecting clients<br>reports, lists, lines, premium', C.server);
 box('s_sse', 400, 720, 230, 150, 'sse.js · event hub', 'pub/sub to every open client<br><br>call · activity · pet<br>learn · lists · report', C.server);
 box('s_risk', 690, 720, 340, 150, 'risk.js · pre-ring decision engine', 'allow list → block list → crowd reputation<br>→ neighbor-spoof boost → category routing<br>→ Scam Block at risk ≥ 80, label at ≥ 45<br>in-call verdicts with similar known scripts', C.server);
 box('s_photon', 1050, 720, 330, 150, 'photon.js · iMessage', 'claims each message id in the database<br>so only one server ever replies<br>routes practice replies, number checks,<br>reports and guardian alerts', C.server);
