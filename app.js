@@ -97,14 +97,14 @@ function row(o) {
   const tag = o.act ? 'button' : 'div';
   return `<${tag} class="row ${o.act ? 'tap' : ''}" ${o.act ? `data-act="${o.act}" data-val="${esc(o.val)}"` : ''}>
     ${o.icon ? `<div class="ico ${o.cls || ''}">${ico(o.icon)}</div>` : ''}${o.avatar || ''}
-    <div class="txt"><div class="t">${o.title}${o.badge || ''}</div>${o.sub ? `<div class="s">${o.sub}</div>` : ''}</div>
+    <div class="txt"><div class="t">${o.title}${o.badge || ''}</div>${o.sub ? `<div class="s ${o.wrap ? 'wrap' : ''}">${o.sub}</div>` : ''}${o.pill ? `<div class="pillrow">${o.pill}</div>` : ''}</div>
     ${o.meta ? `<div class="meta">${o.meta}</div>` : ''}${o.right || ''}${o.chev === false ? '' : `<div class="chev">${ico('chevR')}</div>`}
   </${tag}>`;
 }
 function switchHtml(key, locked) { return `<button class="switch ${S.toggles[key] ? 'on' : ''} ${locked ? 'locked' : ''}" data-act="toggle" data-val="${key}" role="switch" aria-checked="${!!S.toggles[key]}"></button>`; }
 function toggleRow(key, icon, cls, title, sub, prem) {
   const locked = prem && !S.premium;
-  return `<div class="row"><div class="ico ${cls}">${ico(icon)}</div><div class="txt"><div class="t">${title}${prem ? `<span class="badge prem">${S.premium ? 'Premium' : ico('lock') + ' Premium'}</span>` : ''}</div><div class="s" style="white-space:normal">${sub}</div></div>${switchHtml(key, locked)}</div>`;
+  return `<div class="row"><div class="ico">${ico(icon)}</div><div class="txt"><div class="t">${title}${prem ? `<span class="badge prem">${S.premium ? 'Premium' : ico('lock') + ' Premium'}</span>` : ''}</div><div class="s" style="white-space:normal">${sub}</div></div>${switchHtml(key, locked)}</div>`;
 }
 const emptyHtml = (msg, icon = 'shieldCheck') => `<div class="empty">${ico(icon)}<div>${msg}</div></div>`;
 function actRow(a) {
@@ -115,21 +115,27 @@ const filterChips = () => `<div class="chips">${FILTERS.map(([k, l]) => `<button
 const riskMeter = r => `<div class="risk"><div class="bar"><div class="fill" style="width:${r}%"></div></div><div class="lbl"><span>Risk score</span><span><b>${r}</b> · ${riskLabel(r)}</span></div></div>`;
 
 /* ---------- T-Life shell screens ---------- */
+function balanceCard() {
+  return `<div class="card"><div class="between"><div class="label">Current balance</div><span class="dotpill">AutoPay on</span></div><div class="amount">$142.50</div>
+    <div class="saving">${ico('dollar')} You're saving $20.00 with AutoPay</div>
+    <p class="fine">AutoPay scheduled on <b>Nov 25, 2026</b> using <b>Visa *0000</b></p>
+    <div class="btn-row"><button class="btn primary sm" data-act="toast" data-val="Payments are not part of this demo">Pay now</button><button class="btn outline sm" data-act="toast" data-val="Bill details are not part of this demo">View bill</button></div></div>`;
+}
 function homeScreen() {
   const st = stats();
   return `
   ${header('Hey, Anne', { brand: true, icons: [['chat', 'toast', 'Messages are not part of this demo'], ['bell', 'toast', 'No new notifications']] })}
   <p class="subhead">See what's new in T Life today</p>
-  <button class="card tint" data-act="go" data-val="scamshield" style="width:100%">
-    <div class="head"><div class="ico">${ico('shieldCheck')}</div><div><div class="lbl">ScamShield</div><div class="big" style="font-size:20px">${st.blocked} calls blocked this month</div></div></div>
+  <button class="card feature" data-act="go" data-val="scamshield" style="width:100%">
+    <div class="big">ScamShield: ${st.blocked} calls blocked</div>
     <p class="desc">Scam Block, Caller ID and AI voice detection are protecting ${LINES.length} lines on your account.</p>
-    <div class="cta"><span>Open ScamShield</span>${ico('chevR')}</div>
+    <span class="ulink">About ScamShield</span>
+    <div class="stat-dark inset"><div class="st"><div class="n">${st.blocked}</div><div class="l">Blocked this month</div></div><div class="st"><div class="n">${st.flagged}</div><div class="l">Flagged calls</div></div></div>
+    <div class="cta"><span>See ScamShield activity</span>${ico('chevR')}</div>
   </button>
-  <div class="stat-dark"><div class="st"><div class="n">4.88</div><div class="l">GB used this month</div></div><div class="st"><div class="n">17</div><div class="l">Days until bill</div></div></div>
-  <div class="card"><div class="between"><div class="label">Current balance</div><span class="dotpill">AutoPay on</span></div><div class="amount">$142.50</div><div class="label">Due Nov 25</div>
-    <div class="btn-row"><button class="btn primary sm" data-act="toast" data-val="Payments are not part of this demo">Pay now</button><button class="btn outline sm" data-act="toast" data-val="Bill details are not part of this demo">View bill</button></div></div>
+  ${balanceCard()}
   <h2 class="section">Quick actions</h2>
-  <div class="tiles">${tile('dollar', 'Pay bill', 'toast', 'Payments are not part of this demo')}${tile('shield', 'ScamShield', 'go', 'scamshield', true)}${tile('book', 'Scam practice', 'tab', 'learn')}${tile('upgrade', 'Upgrade', 'toast', 'Shopping is not part of this demo')}${tile('headset', 'Support', 'toast', 'Support chat is not part of this demo')}</div>
+  <div class="tiles">${tile('dollar', 'Pay bill', 'toast', 'Payments are not part of this demo')}${tile('shield', 'ScamShield', 'go', 'scamshield')}${tile('book', 'Scam practice', 'tab', 'learn')}${tile('upgrade', 'Upgrade', 'toast', 'Shopping is not part of this demo')}${tile('headset', 'Support', 'toast', 'Support chat is not part of this demo')}</div>
   <h2 class="section">More for you</h2>
   <div class="promo">
     <div class="card dark"><div class="eyebrow">T-Satellite</div><div class="big">Connecting you anywhere</div></div>
@@ -145,7 +151,7 @@ function shopScreen() {
   <div class="chips">${['Phones', 'Accessories', 'Tablets', 'Watches', 'Home Internet'].map(c => `<button class="chip" data-act="toast" data-val="${na}"><span class="thumb"></span>${c}</button>`).join('')}</div>
   <h2 class="section">Promotions for you</h2>
   <div class="card flush">
-    ${row({ icon: 'tag', cls: 'gray', title: 'See 4 promotions', act: 'toast', val: na })}
+    ${row({ icon: 'tag', cls: '', title: 'See 4 promotions', act: 'toast', val: na })}
     <div style="padding:16px"><div class="eyebrow">Apple</div><div class="big" style="font-size:18px">iPhone 17 Pro</div>
       <div class="swatches"><span style="background:#E6E6E6"></span><span style="background:#3B3F4E"></span><span style="background:#FF7A00"></span></div>
       <div style="font-size:14px;font-weight:600">Starting at <span class="strike">$45.84</span> $11.25/month for 24 months</div>
@@ -161,8 +167,8 @@ function benefitsScreen() {
   <h2 class="section">This Tuesday</h2>
   ${PERKS.map(p => `<button class="perk" style="background:${p.bg};width:100%" data-act="toast" data-val="${na}"><div class="b">${p.brand}</div><div class="t">${p.title}</div></button>`).join('')}
   <h2 class="section">Your perks</h2>
-  <div class="card flush">${row({ icon: 'gift', cls: 'magenta', title: '1K redeemed today', sub: 'Keep your 6-week streak going', act: 'toast', val: na })}
-  ${row({ icon: 'star', cls: 'amber', title: 'Magenta Status', sub: 'Hotel, rental car and dining upgrades', act: 'toast', val: na })}</div>`;
+  <div class="card flush">${row({ icon: 'gift', cls: '', title: '1K redeemed today', sub: 'Keep your 6-week streak going', act: 'toast', val: na })}
+  ${row({ icon: 'star', cls: '', title: 'Magenta Status', sub: 'Hotel, rental car and dining upgrades', act: 'toast', val: na })}</div>`;
 }
 function servicesScreen() {
   const st = stats(), na = 'Not part of this demo';
@@ -171,11 +177,11 @@ function servicesScreen() {
   <div class="map"><div class="pin">${ico('pin')}</div><div class="cov"><div><div class="s">Network coverage</div><div class="t">5G UC coverage available</div><div class="s">Near Greenwood Ave</div></div><div class="tag">5G<sup style="font-size:8px">UC</sup></div></div></div>
   <h2 class="section">Your services</h2>
   <div class="card flush">
-    ${row({ icon: 'shieldCheck', cls: 'magenta', title: 'ScamShield', badge: `<span class="badge green">${S.toggles.scamBlock ? 'Protected' : 'Partial'}</span>`, sub: `${st.blocked} calls blocked this month`, act: 'go', val: 'scamshield' })}
-    ${row({ icon: 'satellite', cls: 'blue', title: 'T-Satellite', sub: 'Text, data and calls off the grid', act: 'toast', val: na })}
-    ${row({ icon: 'wifi', cls: 'green', title: 'Home Internet', sub: 'Gateway online · 612 Mbps', act: 'toast', val: na })}
-    ${row({ icon: 'pin', cls: 'amber', title: 'SyncUP DRIVE', sub: 'Last trip 2h ago', act: 'toast', val: na })}
-    ${row({ icon: 'card', cls: 'gray', title: 'T-Mobile MONEY', sub: 'Checking · 4.00% APY', act: 'toast', val: na })}
+    ${row({ icon: 'shieldCheck', cls: '', title: 'ScamShield', sub: `${st.blocked} calls blocked this month`, pill: `<span class="dotpill ${S.toggles.scamBlock ? 'green' : 'amber'}">${S.toggles.scamBlock ? 'Protected' : 'Partial protection'}</span>`, act: 'go', val: 'scamshield' })}
+    ${row({ icon: 'satellite', cls: '', title: 'T-Satellite', sub: 'Text, data and calls off the grid', act: 'toast', val: na })}
+    ${row({ icon: 'wifi', cls: '', title: 'Home Internet', sub: 'Gateway online · 612 Mbps', act: 'toast', val: na })}
+    ${row({ icon: 'pin', cls: '', title: 'SyncUP DRIVE', sub: 'Last trip 2h ago', act: 'toast', val: na })}
+    ${row({ icon: 'card', cls: '', title: 'T-Mobile MONEY', sub: 'Checking · 4.00% APY', act: 'toast', val: na })}
   </div>
   <h2 class="section">More for you</h2>
   <div class="promo"><div class="card dark"><div class="eyebrow">T-Satellite</div><div class="big">Connecting you anywhere</div></div><div class="card"><div class="eyebrow">T-Mobile Visa®</div><div class="big">Rewards that don't play</div></div></div>`;
@@ -183,23 +189,22 @@ function servicesScreen() {
 function accountScreen() {
   const na = 'Not part of this demo';
   return `
-  ${header('Account', { icons: [['settings', 'toast', na]] })}
+  ${header('Account', { icons: [['settings', 'toast', na], ['user', 'toast', na]] })}
   <div class="plan-title">Experience More plan</div>
-  <div class="plan-sub">+ Home Internet · ${LINES.length} lines</div>
+  <div class="plan-sub">+ Home Internet</div>
   <div class="tiles">${tile('clipboard', 'My plans', 'toast', na)}${tile('plus', 'Add-ons', 'toast', na)}${tile('userPlus', 'Add a line', 'toast', na)}${tile('shield', 'ScamShield', 'go', 'scamshield')}${tile('book', 'Scam practice', 'tab', 'learn')}</div>
   <h2 class="section">Billing and payments</h2>
-  <div class="card"><div class="between"><div class="label">Current balance</div><span class="dotpill">AutoPay on</span></div><div class="amount">$142.50</div><div class="label">Due Nov 25 · Experience More · 3 lines</div>
-    <div class="btn-row"><button class="btn primary sm" data-act="toast" data-val="Payments are not part of this demo">Pay now</button><button class="btn outline sm" data-act="toast" data-val="Bill details are not part of this demo">View bill</button></div></div>
+  ${balanceCard()}
   <h2 class="section">Lines and devices</h2>
   <div class="card flush">
-    ${LINES.map(l => row({ avatar: `<div class="avatar ${l.primary ? '' : 'gray'}">${l.initials}</div>`, title: esc(l.device), sub: `${l.num} · ScamShield ${l.toggles?.scamBlock ? 'on' : 'partial'}`, act: 'lineGo', val: l.id })).join('')}
+    ${LINES.map(l => { const on = l.toggles?.scamBlock; return row({ icon: 'sim', title: `${esc(l.name)}${l.primary ? ' (You)' : ''}`, sub: `${esc(l.device)}<br>${l.num}`, wrap: true, pill: `<span class="dotpill ${on ? 'green' : 'amber'}">ScamShield ${on ? 'on' : 'partial'}</span>`, act: 'lineGo', val: l.id }); }).join('')}
   </div>
   <h2 class="section">Settings</h2>
   <div class="card flush">
-    ${row({ icon: 'shield', cls: 'magenta', title: 'ScamShield Premium', sub: S.premium ? 'Active · $4.00/mo per line' : 'Not added', act: 'sheet', val: 'premium' })}
-    ${row({ icon: 'user', cls: 'gray', title: 'Caller ID name', sub: 'Anne Rivera', act: 'toast', val: 'Caller ID name changes are not part of this demo' })}
-    ${row({ icon: 'lock', cls: 'gray', title: 'Privacy & security', act: 'toast', val: na })}
-    ${row({ icon: 'bell', cls: 'gray', title: 'Notifications', act: 'go', val: 'ss-settings' })}
+    ${row({ icon: 'shield', title: 'ScamShield Premium', sub: S.premium ? 'Active · $4.00/mo per line' : 'Not added', act: 'sheet', val: 'premium' })}
+    ${row({ icon: 'user', title: 'Caller ID name', sub: 'Anne Rivera', act: 'toast', val: 'Caller ID name changes are not part of this demo' })}
+    ${row({ icon: 'lock', title: 'Privacy & security', act: 'toast', val: na })}
+    ${row({ icon: 'bell', title: 'Notifications', act: 'go', val: 'ss-settings' })}
   </div>
   <button class="btn ghost" data-act="toast" data-val="Sign out is not part of this demo">Sign out</button>`;
 }
@@ -237,7 +242,7 @@ function scamshieldScreen() {
   ${filterChips()}
   <div class="card flush">${acts.length ? acts.map(actRow).join('') : emptyHtml('Nothing here yet')}</div>
   <div class="card"><div class="eyebrow">Try it</div><div class="big" style="font-size:19px">See ScamShield in action</div><p class="desc">Simulate an incoming call on ${esc(L.device)}.</p>
-    <div class="pill-demo"><button class="btn black" data-act="call" data-val="scam">${ico('phoneOff')} Scam Likely call</button><button class="btn outline" data-act="call" data-val="fraud">${ico('sparkles')} AI voice scam</button><button class="btn outline" data-act="call" data-val="screener">${ico('headset')} Screen a call</button></div></div>
+    <div class="pill-demo"><button class="btn outline" data-act="call" data-val="scam">${ico('phoneOff')} Scam Likely call</button><button class="btn outline" data-act="call" data-val="fraud">${ico('sparkles')} AI voice scam</button><button class="btn outline" data-act="call" data-val="screener">${ico('headset')} Screen a call</button></div></div>
   ${S.premium ? '' : premiumCard()}
   <button class="card" data-act="go" data-val="family" style="width:100%"><div class="head"><div class="ico" style="background:var(--blue)">${ico('users')}</div><div class="big" style="font-size:18px">Protect your whole family</div></div>
     <p class="desc">Set up Scam Block and Caller ID for every line on your account in under two minutes. Calls with people they know are never analyzed.</p><div class="cta"><span>Manage family protection</span>${ico('chevR')}</div></button>
@@ -258,11 +263,11 @@ function lookupScreen() {
   const r = S.lookupRes;
   return `
   ${header('Look up a number', { back: true })}
-  <div class="field">${ico('search')}<input type="tel" placeholder="Enter a phone number" data-bind="lookupQ" data-enter="lookup" value="${esc(S.lookupQ || '')}"><button class="btn black" data-act="lookup">Search</button></div>
+  <div class="field">${ico('search')}<input type="tel" placeholder="Enter a phone number" data-bind="lookupQ" data-enter="lookup" value="${esc(S.lookupQ || '')}"><button class="btn primary" data-act="lookup">Search</button></div>
   ${r ? lookupResult(r) : ''}
   ${!S.premium ? `<div class="banner">${ico('lock')}<div><b>Free lookups show risk and category.</b> ScamShield Premium adds the caller's name, carrier and line type.</div></div>` : ''}
   <h2 class="section">Recent lookups</h2>
-  <div class="card flush">${S.lookups.length ? S.lookups.map(n => row({ icon: 'clock', cls: 'gray', title: esc(n), act: 'lookupRecent', val: n })).join('') : emptyHtml('No lookups yet', 'search')}</div>`;
+  <div class="card flush">${S.lookups.length ? S.lookups.map(n => row({ icon: 'clock', cls: '', title: esc(n), act: 'lookupRecent', val: n })).join('') : emptyHtml('No lookups yet', 'search')}</div>`;
 }
 function lookupResult(r) {
   const blur = S.premium ? '' : 'blur';
@@ -302,7 +307,7 @@ function listScreen(kind) {
   const isB = kind === 'blocklist'; const items = isB ? S.blocked : S.allowed;
   return `
   ${header(isB ? 'Block list' : 'Allow list', { back: true })}
-  <div class="field">${ico(isB ? 'block' : 'checkCircle')}<input type="tel" placeholder="Add a phone number" data-bind="addNum" data-enter="${isB ? 'addBlock' : 'addAllow'}" value="${esc(S.addNum || '')}"><button class="btn black" data-act="${isB ? 'addBlock' : 'addAllow'}">Add</button></div>
+  <div class="field">${ico(isB ? 'block' : 'checkCircle')}<input type="tel" placeholder="Add a phone number" data-bind="addNum" data-enter="${isB ? 'addBlock' : 'addAllow'}" value="${esc(S.addNum || '')}"><button class="btn primary" data-act="${isB ? 'addBlock' : 'addAllow'}">Add</button></div>
   <div class="card flush"><div class="rows-title">${items.length} number${items.length === 1 ? '' : 's'}</div>
     ${items.length ? items.map(b => row({ icon: isB ? 'phoneOff' : 'phone', cls: isB ? 'red' : 'green', title: esc(b.name || b.num), sub: b.name ? `${esc(b.num)} · ${esc(b.when)}` : esc(b.when), chev: false, right: `<button class="icon-btn" data-act="${isB ? 'unblock' : 'unallow'}" data-val="${esc(b.num)}" aria-label="Remove">${ico('trash')}</button>` })).join('') : emptyHtml(isB ? 'No blocked numbers' : 'No allowed numbers')}
   </div>
@@ -332,10 +337,10 @@ function settingsScreen() {
     ${toggleRow('weekly', 'bell', 'amber', 'Weekly protection summary', 'A Monday recap of what ScamShield stopped')}
   </div>
   <div class="card flush">
-    ${row({ icon: 'user', cls: 'gray', title: 'Caller ID name', sub: 'Anne Rivera', act: 'toast', val: 'Caller ID name changes are not part of this demo' })}
-    ${row({ icon: 'shield', cls: 'magenta', title: 'ScamShield Premium', sub: S.premium ? 'Active · $4.00/mo per line' : 'Not added', act: 'sheet', val: 'premium' })}
-    ${row({ icon: 'info', cls: 'gray', title: 'How ScamShield works', sub: 'Network data, call behavior and reports from 100M+ customers', act: 'toast', val: 'Learn more is not part of this demo' })}
-    ${row({ icon: 'globe', cls: 'blue', title: 'Backend', sub: `${esc(api.base)} · live data from TigerData`, chev: false })}
+    ${row({ icon: 'user', cls: '', title: 'Caller ID name', sub: 'Anne Rivera', act: 'toast', val: 'Caller ID name changes are not part of this demo' })}
+    ${row({ icon: 'shield', cls: '', title: 'ScamShield Premium', sub: S.premium ? 'Active · $4.00/mo per line' : 'Not added', act: 'sheet', val: 'premium' })}
+    ${row({ icon: 'info', cls: '', title: 'How ScamShield works', sub: 'Network data, call behavior and reports from 100M+ customers', act: 'toast', val: 'Learn more is not part of this demo' })}
+    ${row({ icon: 'globe', cls: '', title: 'Backend', sub: `${esc(api.base)} · live data from TigerData`, chev: false })}
   </div>
   <button class="btn ghost" data-act="reset">Reset app preferences</button>`;
 }
@@ -507,7 +512,7 @@ function learnScreen() {
   <p class="subhead">Practice spotting scams before a real one finds you</p>
   <div class="card magenta"><div class="eyebrow">Safe Signal practice</div><div class="big">${consent ? 'Scam practice is on' : 'Train your scam radar'}</div>
     <p class="desc">${consent ? `Realistic practice texts arrive ${consent.channel === 'imessage' ? 'on your phone over iMessage' : 'in the app'}. Nothing you say leaves the sandbox.` : 'Get realistic fake scam texts in a safe sandbox, then a lesson on what to watch for.'}</p>
-    <div class="proto-stats" style="border-top-color:rgba(255,255,255,.3)"><div class="st"><div class="n">${st.total}</div><div class="l">Sessions</div></div><div class="st"><div class="n">${st.caught}</div><div class="l">Caught</div></div><div class="st"><div class="n" style="font-size:15px;line-height:1.4">${esc(st.weakestLabel || '—')}</div><div class="l">Weak spot</div></div></div>
+    <div class="proto-stats" style="border-top-color:rgba(255,255,255,.3)"><div class="st"><div class="n">${st.total}</div><div class="l">Sessions</div></div><div class="st"><div class="n">${st.caught}</div><div class="l">Caught</div></div><div class="st"><div class="n" style="font-size:17px;line-height:1.4">${esc(st.weakestLabel || '—')}</div><div class="l">Weak spot</div></div></div>
     ${consent ? '' : `<div class="btn-row"><button class="btn white" data-act="sheet" data-val="optin">Start scam practice</button></div>`}</div>
   ${L.active ? `<button class="card tint" data-act="session" data-val="${L.active.id}" style="width:100%"><div class="head"><div class="ico">${ico('message')}</div><div><div class="lbl">Practice in progress</div><div class="big" style="font-size:18px">${esc(L.active.scenario?.brand || '')} is texting you</div></div></div><div class="cta"><span>Continue the conversation</span>${ico('chevR')}</div></button>` : ''}
   ${consent ? `<h2 class="section">Quick actions</h2>
@@ -529,9 +534,9 @@ function learnChatScreen() {
   ${header(esc(s.scenario?.brand || 'Practice'), { back: true, icons: over ? [['flag', 'lesson', s.id]] : [] })}
   <div class="banner">${ico('info')}<div><b>Sandbox.</b> This is a Safe Signal practice text${s.channel === 'imessage' ? ', mirrored from your iMessage thread' : ''}. Reply like you would to a real text.</div></div>
   <div class="chat">${msgs}</div>
-  ${over ? `<div class="card ${s.outcome === 'caught' ? 'tint' : ''}"><div class="big" style="font-size:18px">${s.outcome === 'caught' ? '🎉 You caught it' : s.outcome === 'fell_for_it' ? '🛑 This was a practice scam' : 'Session ended'}</div><p class="desc">${s.outcome === 'caught' ? 'You called it out before sharing anything.' : 'Nothing was shared with anyone. See what gave it away.'}</p><div class="btn-row"><button class="btn primary" data-act="lesson" data-val="${s.id}">See your lesson</button></div></div>`
+  ${over ? `<div class="card ${s.outcome === 'caught' ? 'tint' : ''}"><div class="big" style="font-size:18px">${s.outcome === 'caught' ? 'You caught it' : s.outcome === 'fell_for_it' ? 'This was a practice scam' : 'Session ended'}</div><p class="desc">${s.outcome === 'caught' ? 'You called it out before sharing anything.' : 'Nothing was shared with anyone. See what gave it away.'}</p><div class="btn-row"><button class="btn primary" data-act="lesson" data-val="${s.id}">See your lesson</button></div></div>`
         : `<div class="quick"><button class="chip" data-act="quick" data-val="This is a scam, I'm blocking you">This is a scam</button><button class="chip" data-act="quick" data-val="Ok, how do I fix it?">Ok, how?</button><button class="chip" data-act="quick" data-val="Who is this?">Who is this?</button><button class="chip" data-act="tapLink" data-val="${s.id}">${ico('globe')} Tap the link</button></div>
-           <div class="field">${ico('message')}<input placeholder="Reply as you normally would" data-bind="learnInput" data-enter="sendReply" value="${esc(S.learnInput || '')}"><button class="btn black" data-act="sendReply">Send</button></div>`}`;
+           <div class="field">${ico('message')}<input placeholder="Reply as you normally would" data-bind="learnInput" data-enter="sendReply" value="${esc(S.learnInput || '')}"><button class="btn primary" data-act="sendReply">Send</button></div>`}`;
 }
 function linkify(text, s) { return esc(text).replace(/https?:\/\/\S+/g, u => `<button class="inline-link" data-act="tapLink" data-val="${s.id}">${u.length > 38 ? u.slice(0, 36) + '…' : u}</button>`); }
 function lessonScreen() {
@@ -541,7 +546,7 @@ function lessonScreen() {
   const replay = L.replay.map(m => `<div class="msg ${m.role === 'user' ? 'me' : 'them'}"><div class="by">${m.role === 'user' ? 'You' : esc(L.scenario?.brand || 'Scammer')}</div>${esc(m.text)}${m.role === 'scammer' && m.redFlags.length ? `<div class="flags">${[...new Map(m.redFlags.map(f => [f.category, f])).values()].map(f => `<span class="badge ${FLAG_CLS[f.category] || ''}" title="${esc(f.explanation)}">${flagLabel(f.category)}</span>`).join('')}</div><div class="why">${[...new Map(m.redFlags.map(f => [f.category, f])).values()].map(f => `<div>• ${esc(f.explanation)}</div>`).join('')}</div>` : ''}</div>`).join('');
   return `
   ${header('Your lesson', { back: true })}
-  <div class="card ${caught ? 'tint' : 'dark'}"><div class="eyebrow">${esc(L.scenario?.categoryLabel || '')} · ${esc(L.scenario?.brand || '')}</div><div class="big">${caught ? '🎉 Great job, you caught it' : '🛑 You fell for this one'}</div><p class="desc">${caught ? 'You spotted the red flags and refused to play along.' : 'It happens to everyone. Here is what to watch for next time.'}</p></div>
+  <div class="card ${caught ? 'tint' : 'dark'}"><div class="eyebrow">${esc(L.scenario?.categoryLabel || '')} · ${esc(L.scenario?.brand || '')}</div><div class="big">${caught ? 'Great job, you caught it' : 'You fell for this one'}</div><p class="desc">${caught ? 'You spotted the red flags and refused to play along.' : 'It happens to everyone. Here is what to watch for next time.'}</p></div>
   <h2 class="section">Replay with red flags</h2>
   <div class="chat replay">${replay}</div>
   <h2 class="section">${L.mistakes.length ? 'Your key mistakes' : 'No major mistakes'}</h2>
@@ -551,10 +556,10 @@ function lessonScreen() {
   <div class="card magenta"><div class="eyebrow">Rule to remember</div><div class="big" style="font-size:19px">${esc(L.ruleToRemember)}</div></div>
   <h2 class="section">Protect yourself now</h2>
   <div class="card flush">
-    ${row({ icon: 'shieldCheck', cls: 'magenta', title: 'Turn on Scam Block', sub: S.toggles.scamBlock ? 'Already on for this line' : 'Stop Scam Likely calls before they ring', act: 'lessonGo', val: 'scamshield' })}
-    ${row({ icon: 'voicemail', cls: 'amber', title: 'Block spam categories', sub: 'Send telemarketing and surveys to voicemail', act: 'lessonGo', val: 'categories' })}
-    ${row({ icon: 'flag', cls: 'red', title: 'Report a real scam text', sub: 'Forward it to 7726 or text it to ScamShield', act: 'sheet', val: 'report' })}
-    ${row({ icon: 'message', cls: 'blue', title: 'Practice again', sub: `Next focus: ${esc(L.nextWeakLabel || 'urgency')}`, act: 'practice', val: 'simulator' })}
+    ${row({ icon: 'shieldCheck', cls: '', title: 'Turn on Scam Block', sub: S.toggles.scamBlock ? 'Already on for this line' : 'Stop Scam Likely calls before they ring', act: 'lessonGo', val: 'scamshield' })}
+    ${row({ icon: 'voicemail', cls: '', title: 'Block spam categories', sub: 'Send telemarketing and surveys to voicemail', act: 'lessonGo', val: 'categories' })}
+    ${row({ icon: 'flag', cls: '', title: 'Report a real scam text', sub: 'Forward it to 7726 or text it to ScamShield', act: 'sheet', val: 'report' })}
+    ${row({ icon: 'message', cls: '', title: 'Practice again', sub: `Next focus: ${esc(L.nextWeakLabel || 'urgency')}`, act: 'practice', val: 'simulator' })}
   </div>`;
 }
 function optinSheet() {
