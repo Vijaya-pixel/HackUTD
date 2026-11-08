@@ -82,45 +82,39 @@ function unlocked(i) { const g = gameState(); return i === 0 || (g.progress?.[QU
 function defaultNode() { const g = gameState(); for (let i = 0; i < QUEST.length; i++) if (unlocked(i) && !(g.progress?.[QUEST[i].id]?.stars)) return QUEST[i].id; return QUEST[QUEST.length - 1].id; }
 const totalStars = () => QUEST.reduce((a, n) => a + (gameState().progress?.[n.id]?.stars || 0), 0);
 
-/* ---------- free-roam map ----------
-   Buddy walks wherever the player sends it: D-pad taps (or arrow keys) move it one short, animated step; standing on a
-   checkpoint opens that stop's card. Tapping a checkpoint walks Buddy there step by step. */
-const STEP = { x: 9, y: 7 }, NEAR = { x: 9, y: 7 }, BOUNDS = { x: [10, 90], y: [8, 86] };
+/* ---------- cloud map ----------
+   Checkpoints are clouds joined by a dotted path. Tap a cloud and Buddy glides over to it; the stop's card opens
+   when Buddy lands. Position is remembered per line. */
 const posKey = () => `buddyPos:${curLine().lineId}`;
 function petPos() {
   const g = gameState();
-  if (!g.pos) { try { g.pos = JSON.parse(localStorage.getItem(posKey())) || null; } catch {} if (!g.pos) { const n = QUEST[0]; g.pos = { x: n.x, y: n.y }; } }
+  if (!g.pos) { try { g.pos = JSON.parse(localStorage.getItem(posKey())) || null; } catch {} if (!g.pos) { const n = QUEST[0]; g.pos = { x: n.x, y: n.y, at: n.id }; } }
+  if (!g.pos.at) { const n = QUEST.find(q => Math.abs(q.x - g.pos.x) < 6 && Math.abs(q.y - g.pos.y) < 6) || QUEST[0]; g.pos = { x: n.x, y: n.y, at: n.id }; }
   return g.pos;
 }
-function nearNode() { const p = petPos(); return QUEST.find(n => Math.abs(n.x - p.x) <= NEAR.x && Math.abs(n.y - p.y) <= NEAR.y) || null; }
+function nearNode() { const p = petPos(); return QUEST.find(n => n.id === p.at) || null; }
+const cloudPath = () => { const p = QUEST.map(n => [n.x, n.y]); let d = `M ${p[0][0]} ${p[0][1]}`; for (let i = 1; i < p.length; i++) { const [x0, y0] = p[i - 1], [x1, y1] = p[i]; d += ` Q ${(x0 + x1) / 2 + (i % 2 ? 14 : -14)} ${(y0 + y1) / 2} ${x1} ${y1}`; } return d; };
 const walkTimers = {};
-function moveBuddy(dx, dy) {
-  const g = gameState(); if (g.run) return;
-  const p = petPos(), before = nearNode()?.id || null;
-  p.x = Math.max(BOUNDS.x[0], Math.min(BOUNDS.x[1], p.x + dx * STEP.x));
-  p.y = Math.max(BOUNDS.y[0], Math.min(BOUNDS.y[1], p.y + dy * STEP.y));
-  try { localStorage.setItem(posKey(), JSON.stringify(p)); } catch {}
-  const av = document.querySelector('.quest .avatar');
-  if (av) { av.style.left = p.x + '%'; av.style.top = p.y + '%'; av.classList.remove('hop'); void av.offsetWidth; av.classList.add('hop'); }
-  if (dx && window.Buddy3D) window.Buddy3D.face(dx);
-  const after = nearNode()?.id || null;
-  if (after !== before) { g.current = after; clearTimeout(walkTimers.rerender); walkTimers.rerender = setTimeout(() => render(), 340); }
-}
 function walkTo(id) {
-  const n = QUEST[nodeIndex(id)]; if (!n) return; clearInterval(walkTimers.auto);
-  walkTimers.auto = setInterval(() => {
-    const p = petPos();
-    if (gameState().run || (Math.abs(n.x - p.x) <= NEAR.x && Math.abs(n.y - p.y) <= NEAR.y)) { clearInterval(walkTimers.auto); return; }
-    const dx = Math.abs(n.x - p.x) > NEAR.x ? Math.sign(n.x - p.x) : 0, dy = Math.abs(n.y - p.y) > NEAR.y ? Math.sign(n.y - p.y) : 0;
-    moveBuddy(dx, dy);
-  }, 300);
+  const g = gameState(); if (g.run) return;
+  const n = QUEST[nodeIndex(id)]; if (!n) return;
+  const p = petPos(); if (p.at === id) { g.current = id; render(); return; }
+  const dx = Math.sign(n.x - p.x), dist = Math.hypot(n.x - p.x, (n.y - p.y) * 1.4), ms = Math.max(600, Math.min(1500, dist * 22));
+  p.x = n.x; p.y = n.y; p.at = id;
+  try { localStorage.setItem(posKey(), JSON.stringify(p)); } catch {}
+  if (window.Buddy3D) window.Buddy3D.face(dx);
+  const av = document.querySelector('.quest .avatar');
+  if (av) { av.style.transitionDuration = ms + 'ms'; av.style.setProperty('--hops', String(Math.max(2, Math.round(ms / 300)))); av.style.left = n.x + '%'; av.style.top = n.y + '%'; av.classList.remove('travel'); void av.offsetWidth; av.style.animationDuration = ms + 'ms'; av.classList.add('travel'); }
+  document.querySelectorAll('.quest .node').forEach(el => el.classList.toggle('target', el.dataset.val === id));
+  clearTimeout(walkTimers.arrive);
+  walkTimers.arrive = setTimeout(() => { if (window.Buddy3D) window.Buddy3D.face(0); g.current = id; render(); }, ms + 60);
 }
 function questMap() {
   const g = gameState();
   if (!g.progress) { loadGame(); return `<div class="quest"><div class="map loading"><div class="sky"></div><p>Loading your map…</p></div></div>`; }
   const P = S.pet, p = petPos(), here = nearNode(); g.current = here?.id || null;
   const stars = n => { const s = g.progress[n.id]?.stars || 0; return `<div class="stars">${[1, 2, 3].map(i => `<span class="${i <= s ? 'on' : ''}">★</span>`).join('')}</div>`; };
-  const nodes = QUEST.map((n, i) => { const un = unlocked(i), done = (g.progress[n.id]?.stars || 0) > 0; return `<button class="node ${un ? '' : 'locked'} ${done ? 'done' : ''} ${here?.id === n.id ? 'current' : ''} ${n.boss ? 'boss' : ''}" style="left:${n.x}%;top:${n.y}%;--c:${n.color}" data-act="questSelect" data-val="${n.id}"><div class="pad"></div><div class="orb">${ico(un ? n.icon : 'lock')}</div>${stars(n)}<div class="nl">${n.title}</div></button>`; }).join('');
+  const nodes = QUEST.map((n, i) => { const un = unlocked(i), done = (g.progress[n.id]?.stars || 0) > 0; return `<button class="node cloudnode ${un ? '' : 'locked'} ${done ? 'done' : ''} ${here?.id === n.id ? 'current' : ''} ${n.boss ? 'boss' : ''}" style="left:${n.x}%;top:${n.y}%;--c:${n.color}" data-act="questSelect" data-val="${n.id}"><div class="cloudshape"><i></i><i></i><i></i><div class="orb">${ico(un ? n.icon : 'lock')}</div></div>${stars(n)}<div class="nl">${n.title}</div></button>`; }).join('');
   const reaction = S.petAnim?.kind === 'heal' ? 'celebrating' : S.petAnim ? 'surprised' : (S.quiz?.open && !S.quiz.result) ? 'determined' : null;
   setTimeout(() => {
     const av = document.querySelector('.quest .avatar'); if (!av) return;
@@ -128,19 +122,18 @@ function questMap() {
     const bar = document.querySelector('.quest .hud .fill[data-to]'); if (bar) requestAnimationFrame(() => { bar.style.width = bar.dataset.to + '%'; });
   }, 0);
   const energy = P ? P.health : 0, eCls = energy >= 60 ? 'good' : energy >= 40 ? 'mid' : 'low';
-  const deco = [[8, 20], [40, 44], [62, 74], [90, 14], [14, 84], [92, 44]].map(([x, y], i) => `<i class="bush b${i % 3}" style="left:${x}%;top:${y}%"></i>`).join('');
   let card;
   if (here) {
     const i = nodeIndex(here.id), prog = g.progress[here.id], locked = !unlocked(i);
     card = `<div class="nodecard" style="--c:${here.color}">
-      <div class="nc-top"><div class="orb">${ico(here.icon)}</div><div class="nc-t"><div class="eyebrow">${here.boss ? 'Boss checkpoint' : `Checkpoint ${i + 1} of ${QUEST.length}`} · ${esc(here.teaches)}</div><div class="big">${here.title}</div></div>${stars(here)}</div>
+      <div class="nc-top"><div class="orb">${ico(here.icon)}</div><div class="nc-t"><div class="eyebrow">${here.boss ? 'Boss cloud' : `Cloud ${i + 1} of ${QUEST.length}`} · ${esc(here.teaches)}</div><div class="big">${here.title}</div></div>${stars(here)}</div>
       <p class="desc">${esc(here.blurb)}</p>
       ${prog ? `<div class="nc-meta">Best ${prog.best} · played ${prog.plays}×</div>` : ''}
       ${locked ? `<button class="btn outline" disabled>${ico('lock')} Clear ${QUEST[i - 1].title} first</button>` : `<button class="btn primary" data-act="questPlay" data-val="${here.id}">${ico('sparkles')} ${prog ? 'Play again' : 'Play'}</button>`}
     </div>`;
   } else {
     const next = QUEST.find((n, i) => unlocked(i) && !(g.progress[n.id]?.stars)) || QUEST[QUEST.length - 1];
-    card = `<div class="nodecard hint" style="--c:#E20074"><div class="nc-top"><div class="orb">${ico('paw')}</div><div class="nc-t"><div class="eyebrow">Walk Buddy to a checkpoint</div><div class="big">Use the arrows, or tap a checkpoint</div></div></div><p class="desc">Next up: <b>${next.title}</b> · ${esc(next.teaches)}. ${totalStars()}/${QUEST.length * 3} stars so far.</p><button class="btn outline" data-act="questSelect" data-val="${next.id}">${ico('paw')} Walk to ${next.title}</button></div>`;
+    card = `<div class="nodecard hint" style="--c:#E20074"><div class="nc-top"><div class="orb">${ico('paw')}</div><div class="nc-t"><div class="eyebrow">Tap a cloud</div><div class="big">Buddy flies to it</div></div></div><p class="desc">Next up: <b>${next.title}</b> · ${esc(next.teaches)}.</p></div>`;
   }
   return `
   <div class="quest">
@@ -150,16 +143,10 @@ function questMap() {
     </div>
     <div class="map">
       <div class="sky"><i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i></div>
-      <div class="hills"></div>${deco}
+      <div class="hills"></div>
+      <svg class="road dotted" viewBox="0 0 100 100" preserveAspectRatio="none"><path class="dots" d="${cloudPath()}"/></svg>
       ${nodes}
       <div class="avatar" style="left:${p.x}%;top:${p.y}%"><div class="pet3d">${petSvg(P?.mood || 'happy')}</div></div>
-      <div class="dpad" aria-label="Move Buddy">
-        <button class="k up" data-act="questMove" data-val="0,-1" aria-label="Up">${ico('chevD')}</button>
-        <button class="k left" data-act="questMove" data-val="-1,0" aria-label="Left">${ico('chevL')}</button>
-        <span class="k mid">${ico('paw')}</span>
-        <button class="k right" data-act="questMove" data-val="1,0" aria-label="Right">${ico('chevR')}</button>
-        <button class="k down" data-act="questMove" data-val="0,1" aria-label="Down">${ico('chevD')}</button>
-      </div>
       <button class="signpost" data-act="practice" data-val="imessage">${ico('phone')}<span>Field test<br><small>Text my phone</small></span></button>
     </div>
     ${S.quiz ? `<div class="speech">${bubbleHtml(P || { mood: 'happy' }, S.petAnim, S.trap)}</div>` : ''}
@@ -303,7 +290,6 @@ function arenaHtml() {
 function GAME_ACTIONS(v) {
   return {
     questSelect: () => walkTo(v),
-    questMove: () => { const [dx, dy] = String(v).split(',').map(Number); clearInterval(walkTimers.auto); moveBuddy(dx, dy); },
     questPlay: () => startRun(v),
     questAnswer: () => answer(v),
     questHangup: hangUp,
@@ -312,8 +298,3 @@ function GAME_ACTIONS(v) {
     questAgain: () => closeRun(true),
   };
 }
-document.addEventListener('keydown', e => {
-  if (typeof current !== 'function' || current() !== 'learn' || gameState().run || S.sheet) return;
-  const d = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key]; if (!d) return;
-  e.preventDefault(); clearInterval(walkTimers.auto); moveBuddy(d[0], d[1]);
-});

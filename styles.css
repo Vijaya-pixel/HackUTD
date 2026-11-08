@@ -735,3 +735,30 @@ textarea.area{width:100%;border:1px solid var(--line);border-radius:12px;padding
 .badge.prem{background:#F2F2F2;color:var(--ink)}
 .chip.on{background:var(--magenta-tint);color:var(--magenta);border-color:var(--magenta)}
 .chips.on-magenta .chip.on{background:#fff;color:var(--ink);border-color:#fff}
+
+/* ---------- cloud map: cloud checkpoints, dotted path, glide travel ---------- */
+.quest .dpad{display:none}
+.quest .road.dotted .dots{fill:none;stroke:#fff;stroke-width:5px;stroke-linecap:round;stroke-dasharray:0.01 11;vector-effect:non-scaling-stroke;opacity:.95;filter:drop-shadow(0 2px 2px rgba(226,0,116,.25));animation:march 3s linear infinite}
+.quest .node.cloudnode{width:112px}
+.quest .node .pad{display:none}
+.quest .cloudshape{position:relative;width:104px;height:58px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 10px 16px rgba(226,0,116,.16));transition:transform .2s}
+.quest .cloudshape::before{content:"";position:absolute;left:6px;right:6px;bottom:6px;height:30px;background:#fff;border-radius:999px}
+.quest .cloudshape i{position:absolute;background:#fff;border-radius:50%}
+.quest .cloudshape i:nth-child(1){width:40px;height:40px;left:14px;top:4px}
+.quest .cloudshape i:nth-child(2){width:50px;height:50px;left:36px;top:-6px}
+.quest .cloudshape i:nth-child(3){width:34px;height:34px;left:66px;top:10px}
+.quest .cloudnode .orb{position:relative;width:40px;height:40px;border:0;background:var(--c);color:#fff;box-shadow:none;margin-top:6px}
+.quest .cloudnode .orb svg{width:20px;height:20px}
+.quest .cloudnode.locked .cloudshape{opacity:.75}
+.quest .cloudnode.locked .orb{background:#D6D6DB;color:#8A8A90}
+.quest .cloudnode.done .cloudshape::before,.quest .cloudnode.done .cloudshape i{background:#FFF4FA}
+.quest .cloudnode.current .cloudshape{transform:scale(1.06)}
+.quest .cloudnode.current .orb{animation:nodepulse 1.6s ease-in-out infinite}
+.quest .cloudnode.target .cloudshape{animation:cloudbob .6s ease-in-out infinite}
+@keyframes cloudbob{0%,100%{transform:translateY(0) scale(1.04)}50%{transform:translateY(-5px) scale(1.06)}}
+.quest .cloudnode.boss .cloudshape{width:116px;height:64px}
+.quest .cloudnode .nl{margin-top:-2px}
+.quest .avatar{transform:translate(-50%,-100%);transition:left .9s cubic-bezier(.45,.05,.3,1),top .9s cubic-bezier(.45,.05,.3,1)}
+.quest .avatar.travel{animation:travelhop .9s ease-in-out}
+@keyframes travelhop{0%,100%{margin-top:0}20%{margin-top:-22px}45%{margin-top:-6px}70%{margin-top:-18px}}
+.quest .nodecard.hint .big{font-size:20px}
