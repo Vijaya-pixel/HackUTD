@@ -219,13 +219,11 @@ function scamshieldScreen() {
   ${header('ScamShield', { back: true, icons: [['search', 'go', 'lookup'], ['settings', 'go', 'ss-settings']] })}
   <div class="card status">
     <div class="shield-status"><div class="orb ${on ? '' : 'off'}">${ico(on ? 'shieldCheck' : 'shield')}</div>
-      <div><div class="big">${on ? "You're protected" : 'Scam Block is off'}</div><p class="desc" style="margin-top:2px">${on ? `Scam Block is on for ${esc(L.device)}` : `Scam Likely calls will ring through on ${esc(L.device)}`}</p></div></div>
+      <div><div class="big">${on ? "You're protected" : 'Scam Block is off'}</div><p class="desc" style="margin-top:2px">${on ? 'Scam Block is on · last 30 days' : `Scam Likely calls ring through on ${esc(L.device)}`}</p></div></div>
     <div class="stat-row"><div class="st"><div class="n">${st.blocked}</div><div class="l">Blocked</div></div><div class="st"><div class="n">${st.flagged}</div><div class="l">Flagged</div></div><div class="st"><div class="n">${st.identified}</div><div class="l">Identified</div></div></div>
-    <div class="note">Last 30 days · Built into the network, no extra app needed</div>
   </div>
-  <div class="chips wrap">${LINES.map(l => `<button class="chip ${l.id === S.line ? 'on' : ''}" data-act="line" data-val="${l.id}">${l.name}${l.primary ? ' (you)' : ''}</button>`).join('')}<button class="chip" data-act="go" data-val="family">${ico('users')} Family</button></div>
   <h2 class="section">Quick actions</h2>
-  <div class="tiles wrap">${tile('block', 'Block list', 'go', 'blocklist')}${tile('search', 'Look up', 'go', 'lookup')}${tile('flag', 'Report', 'sheet', 'report')}${tile('checkCircle', 'Allow list', 'go', 'allowlist')}${tile('voicemail', 'Categories', 'go', 'categories')}</div>
+  <div class="tiles wrap">${tile('block', 'Block list', 'go', 'blocklist')}${tile('flag', 'Report', 'sheet', 'report')}${tile('checkCircle', 'Allow list', 'go', 'allowlist')}</div>
   <h2 class="section">Protection</h2>
   <div class="card flush">
     ${toggleRow('scamBlock', 'shieldCheck', 'magenta', 'Scam Block', 'Automatically block Scam Likely calls before your phone rings')}
@@ -336,6 +334,7 @@ function settingsScreen() {
   <div class="card flush">
     ${row({ icon: 'user', cls: '', title: 'Caller ID name', sub: 'Harsh Rivera', act: 'toast', val: 'Caller ID name changes are not part of this demo' })}
     ${row({ icon: 'shield', cls: '', title: 'ScamShield Premium', sub: S.premium ? 'Active · $4.00/mo per line' : 'Not added', act: 'sheet', val: 'premium' })}
+    ${row({ icon: 'voicemail', cls: '', title: 'Block spam categories', sub: 'Telemarketing, surveys, political and more', act: 'go', val: 'categories' })}
     ${row({ icon: 'info', cls: '', title: 'How ScamShield works', sub: 'Network data, call behavior and reports from 100M+ customers', act: 'toast', val: 'Learn more is not part of this demo' })}
     ${row({ icon: 'globe', cls: '', title: 'Backend', sub: `${esc(api.base)} · live data from TigerData`, chev: false })}
   </div>
@@ -523,7 +522,7 @@ function statsSheet() {
     <h2 class="section">Recent practice texts</h2>
     <div class="card flush">${L.sessions.length ? L.sessions.slice(0, 6).map(sessionRow).join('') : emptyHtml('No practice texts yet', 'message')}</div>
     ${petLog()}
-    <div class="card flush"><div class="row"><div class="ico">${ico('bell')}</div><div class="txt"><div class="t">Quick checks from Buddy</div><div class="s">A question bubble on the map now and then</div></div><button class="switch ${S.quizOn ? 'on' : ''}" data-act="quizToggle" role="switch"></button></div></div>`;
+    `;
 }
 function learnChatScreen() {
   const s = S.session;
