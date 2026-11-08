@@ -769,3 +769,11 @@ textarea.area{width:100%;border:1px solid var(--line);border-radius:12px;padding
 .hero-head.home{padding:54px 16px 62px}
 .hero-head.home .subhead{margin:-2px 0 0;font-size:16px}
 .hero-head.home .header{padding:4px 0 10px}
+
+/* Home: no overlap; the real Telekom T mark (T with flanking squares) in white on the hero */
+.hero-head.home{padding:54px 16px 22px}
+.hero-head.home + .card,.hero-head.home ~ .card:first-of-type{margin-top:16px}
+.brandbar{margin-bottom:4px;gap:9px}
+.brandbar .tmark{width:auto;height:auto;border-radius:0;background:transparent;color:#fff}
+.brandbar .tmark svg{width:28px;height:28px}
+.brandbar .tlife{font-size:17px;font-weight:700;letter-spacing:.1px}

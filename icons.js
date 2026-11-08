@@ -60,6 +60,6 @@ const I = (() => {
     paw: w('<circle cx="6.5" cy="9" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="17.5" cy="9" r="2"/><path d="M12 11.5c-3.2 0-6 2.7-6 5.3 0 1.6 1.2 2.7 2.7 2.7.9 0 1.6-.4 3.3-.4s2.4.4 3.3.4c1.5 0 2.7-1.1 2.7-2.7 0-2.6-2.8-5.3-6-5.3z"/>'),
     heart: w('<path d="M12 20.5s-7.5-4.8-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.5-7.5 10.3-7.5 10.3z"/>'),
     book: w('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5V5.5M20 18v3H6.5"/><path d="M9 8h7M9 11.5h5"/>'),
-    tmo: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="18" height="4"/><rect x="9.5" y="4" width="5" height="16"/><rect x="3" y="4" width="3" height="7"/><rect x="18" y="4" width="3" height="7"/></svg>`,
+    tmo: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="1.5" y="7" width="3.4" height="3.4"/><rect x="19.1" y="7" width="3.4" height="3.4"/><rect x="6.6" y="7" width="10.8" height="3.4"/><rect x="10.3" y="7" width="3.4" height="14"/></svg>`,
   };
 })();

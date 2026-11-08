@@ -129,7 +129,7 @@ function homeScreen() {
     ${header('Hey, Harsh', { brand: true, icons: [['chat', 'toast', 'Messages are not part of this demo'], ['bell', 'toast', 'No new notifications']] })}
     <p class="subhead">See what's new in T Life today</p>
   </div>
-  <div class="lift">${balanceCard()}</div>
+  ${balanceCard()}
   <div class="card flush">${row({ icon: 'gift', title: 'T-Mobile Tuesdays', sub: "This week: free 7-Eleven coffee, 15¢ off gas at Shell, $5 off Little Caesars", act: 'tab', val: 'benefits', wrap: true })}</div>
   <h2 class="section">Quick actions</h2>
   <div class="tiles">${tile('dollar', 'Pay bill', 'toast', 'Payments are not part of this demo')}${tile('shield', 'ScamShield', 'go', 'scamshield')}${tile('paw', 'Train with Buddy', 'tab', 'learn')}${tile('upgrade', 'Upgrade', 'toast', 'Shopping is not part of this demo')}${tile('headset', 'Support', 'toast', 'Support chat is not part of this demo')}</div>
