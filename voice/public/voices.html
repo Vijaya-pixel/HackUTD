@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Safe Signal · Scam voice database</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body {
+      display: block;
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .panel-h {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin: 26px 0 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .grid label {
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    input,
+    select {
+      background: rgba(255, 255, 255, .06);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 15px;
+    }
+
+    .rec-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .rec-row button {
+      width: auto;
+      padding: 10px 16px;
+    }
+
+    .live {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #ddd;
+      min-height: 20px;
+    }
+
+    .profile {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .p-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: start;
+      flex-wrap: wrap;
+    }
+
+    .p-name {
+      font-size: 18px;
+      font-weight: 700;
+      background: none;
+      border: 1px dashed transparent;
+      padding: 2px 4px;
+      color: var(--text);
+    }
+
+    .p-name:hover,
+    .p-name:focus {
+      border-color: var(--line);
+    }
+
+    .stats {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 8px 0;
+    }
+
+    .stat {
+      background: rgba(255, 255, 255, .06);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .stat b {
+      display: block;
+      font-size: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 700px) {
+      .two {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .danger-link {
+      background: none;
+      color: #ff8b8f;
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid #4c0b10;
+    }
+
+    a {
+      color: #ff8cc6;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="logo">🗂️</div>
+        <div>
+          <h1>Scam voice database</h1>
+          <p class="muted" id="summary">Loading…</p>
+        </div>
+      </div>
+      <div class="row" style="display:flex;gap:8px">
+        <a href="/" class="ghost" style="text-decoration:none;width:auto">← Phone app</a>
+        <button class="ghost" id="reset" style="width:auto">Delete everything</button>
+      </div>
+    </div>
+
+    <h2 class="panel-h">Add a scam voice by recording it</h2>
+    <div class="card">
+      <div class="grid">
+        <label>Name <input id="f-label" placeholder="e.g. IRS guy" maxlength="60" /></label>
+        <label>Number they called from <input id="f-number" inputmode="tel" placeholder="+1 (469) 555-0142"
+            maxlength="32" /></label>
+        <label>Scam type
+          <select id="f-type">
+            <option>Government impersonation</option>
+            <option>Bank impersonation</option>
+            <option>Family emergency scam</option>
+            <option>Tech support scam</option>
+            <option>Prize or refund scam</option>
+            <option>Suspicious call</option>
+          </select>
+        </label>
+        <label>Add to
+          <select id="f-profile">
+            <option value="">New scam caller</option>
+          </select>
+        </label>
+      </div>
+      <div class="rec-row">
+        <button class="primary" id="rec">🎙️ Start recording</button>
+        <button class="secondary" id="save" disabled>Save voice</button>
+        <div class="levels" id="levels"><i></i><i></i><i></i><i></i><i></i></div>
+        <span class="muted small" id="rec-status">Talk for 5–10 seconds in the scammer's voice.</span>
+      </div>
+      <div class="live" id="live"></div>
+    </div>
+
+    <h2 class="panel-h">Known scam callers</h2>
+    <div id="profiles"></div>
+
+    <div class="card privacy">
+      <div class="card-title">What's stored</div>
+      <ul>
+        <li>A voiceprint is a list of 256 numbers from a speaker model. You can't play it back as audio.</li>
+        <li>Voices are added only when a customer reports a call or a team member records one here.</li>
+        <li>Profiles expire 90 days after the last report.</li>
+        <li>"Recognized on later calls" are matches, not proof. The alert always shows the match percentage.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createAudioContext, Listener } from "./mic.js";
+    const $ = (id) => document.getElementById(id);
+    const el = (tag, attrs = {}, ...kids) => {
+      const n = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) k === "class" ? (n.className = v) : n.setAttribute(k, v);
+      for (const c of kids) if (c !== null && c !== undefined && c !== "") n.append(c instanceof Node ? c : String(c));
+      return n;
+    };
+    const when = (iso) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    const api = async (path, opts) => {
+      const r = await fetch(path, opts);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+      return d;
+    };
+    const post = (path, body, method = "POST") => api(path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+
+    let editing = false;
+
+    async function load() {
+      if (editing) return;
+      const [list, status] = await Promise.all([api("/api/voices"), api("/api/status")]);
+      const nums = new Set(list.flatMap((p) => p.numbers.map((n) => n.number)));
+      const aiCount = list.filter((p) => p.aiVoice).length;
+      $("summary").textContent = `${list.length} scam caller${list.length === 1 ? "" : "s"} · ${aiCount} using AI voices · ${nums.size} phone number${nums.size === 1 ? "" : "s"} · match threshold ${Math.round(status.threshold * 100)}%`;
+
+      const sel = $("f-profile");
+      const prev = sel.value;
+      sel.replaceChildren(el("option", { value: "" }, "New scam caller"), ...list.map((p) => el("option", { value: p.id }, p.label)));
+      sel.value = list.some((p) => p.id === prev) ? prev : "";
+
+      const box = $("profiles");
+      box.replaceChildren();
+      if (!list.length) {
+        box.append(el("p", { class: "muted" }, "No scam voices yet. Report a call from the phone app, or record one above."));
+        return;
+      }
+      for (const p of list) box.append(renderProfile(p));
+    }
+
+    function renderProfile(p) {
+      const name = el("input", { class: "p-name", value: p.label, maxlength: "60", "aria-label": "Name" });
+      name.addEventListener("focus", () => (editing = true));
+      name.addEventListener("blur", async () => {
+        editing = false;
+        if (name.value.trim() && name.value !== p.label) await post(`/api/voices/${p.id}`, { label: name.value }, "PATCH");
+        load();
+      });
+      name.addEventListener("keydown", (e) => e.key === "Enter" && name.blur());
+
+      const aiToggle = el("button", { class: "danger-link", style: "color:#c9b6ff;border-color:#3a2d5c;margin-right:6px" }, p.aiVoice ? "Unmark AI voice" : "Mark as AI voice");
+      aiToggle.addEventListener("click", async () => {
+        await post(`/api/voices/${p.id}`, { aiVoice: !p.aiVoice }, "PATCH");
+        load();
+      });
+
+      const del = el("button", { class: "danger-link" }, "Delete");
+      del.addEventListener("click", async () => {
+        if (!confirm(`Delete ${p.label} and all its voiceprints?`)) return;
+        await api(`/api/voices/${p.id}`, { method: "DELETE" });
+        load();
+      });
+
+      const numbers = el("table", {},
+        el("tr", {}, el("th", {}, "Number"), el("th", {}, "Reported"), el("th", {}, "First seen"), el("th", {}, "Last seen")),
+        ...p.numbers.map((n) => el("tr", {}, el("td", {}, n.number), el("td", {}, `${n.times}×`), el("td", {}, when(n.firstSeen)), el("td", {}, when(n.lastSeen)))));
+
+      const matches = p.matches.length
+        ? el("table", {},
+          el("tr", {}, el("th", {}, "Called from"), el("th", {}, "Match"), el("th", {}, "When")),
+          ...p.matches.map((m) => el("tr", {}, el("td", {}, m.number), el("td", {}, `${Math.round(m.similarity * 100)}%`), el("td", {}, when(m.at)))))
+        : el("p", { class: "muted small" }, "Not recognized on any call yet.");
+
+      return el("div", { class: "profile" },
+        el("div", { class: "p-head" },
+          el("div", {}, name,
+            p.aiVoice ? el("span", { class: "tag", style: "background:#2a1f4a;color:#c9b6ff;margin-left:6px" }, "🤖 AI voice") : "",
+            el("div", { class: "muted small" }, `${p.id} · ${p.scamType}`)),
+          el("div", {}, aiToggle, del)),
+        el("div", { class: "stats" },
+          el("div", { class: "stat" }, el("b", {}, p.reports), "reports"),
+          el("div", { class: "stat" }, el("b", {}, p.numbers.length), "numbers used"),
+          el("div", { class: "stat" }, el("b", {}, p.matches.length), "times recognized"),
+          el("div", { class: "stat" }, el("b", {}, p.voiceSamples), `voiceprints · ${p.secondsOfSpeech}s speech`),
+          el("div", { class: "stat" }, el("b", {}, when(p.lastSeen)), "last seen")),
+        el("div", { class: "two" },
+          el("div", {}, el("div", { class: "card-title" }, "Numbers reported calling from"), numbers),
+          el("div", {}, el("div", { class: "card-title" }, "Recognized on later calls"), matches)),
+        el("p", { class: "muted small" }, `Created ${when(p.createdAt)} · expires ${new Date(p.expiresAt).toLocaleDateString()}`));
+    }
+
+    // ----- Recording -----
+    let listener = null;
+    let recordingId = null;
+    const bars = [...document.querySelectorAll("#levels i")];
+
+    $("rec").addEventListener("click", async () => {
+      if (listener) return stopRec();
+      const ctx = createAudioContext();
+      $("live").textContent = "";
+      $("save").disabled = true;
+      recordingId = null;
+      listener = new Listener({
+        onMessage: (m) => {
+          if (m.type === "started") recordingId = m.callId;
+          if (m.type === "partial" || m.type === "final") $("live").textContent = `Heard: “${m.text}”`;
+          if (m.type === "voice" && m.status === "match") $("rec-status").textContent = `This voice already matches ${m.profile.label} (${Math.round(m.similarity * 100)}%).`;
+        },
+        onLevel: (peak) => {
+          const lit = Math.min(5, Math.round(Math.sqrt(peak) * 7));
+          bars.forEach((b, i) => b.classList.toggle("on", i < lit));
+        },
+      });
+      try {
+        await listener.start(ctx, { mode: "enroll" });
+        $("rec").textContent = "⏹ Stop recording";
+        $("rec-status").textContent = "Recording… talk naturally, with short pauses.";
+      } catch (e) {
+        listener = null;
+        $("rec-status").textContent = e.message;
+      }
+    });
+
+    async function stopRec() {
+      const l = listener;
+      listener = null;
+      $("rec").textContent = "🎙️ Start recording";
+      const r = await l.stop();
+      bars.forEach((b) => b.classList.remove("on"));
+      if (r && r.segments > 0) {
+        $("rec-status").textContent = `Got ${r.seconds}s of speech in ${r.segments} sentence${r.segments === 1 ? "" : "s"}. Ready to save.`;
+        $("save").disabled = false;
+      } else {
+        $("rec-status").textContent = "Didn't catch enough speech. Try again and talk for longer.";
+      }
+    }
+
+    $("save").addEventListener("click", async () => {
+      if (!recordingId) return;
+      $("save").disabled = true;
+      try {
+        const r = await post("/api/voices/enroll", {
+          callId: recordingId,
+          label: $("f-label").value,
+          number: $("f-number").value,
+          scamType: $("f-type").value,
+          profileId: $("f-profile").value,
+        });
+        $("rec-status").textContent = `Saved to ${r.profile.label}.`;
+        $("live").textContent = "";
+        recordingId = null;
+        load();
+      } catch (e) {
+        $("rec-status").textContent = e.message;
+        $("save").disabled = false;
+      }
+    });
+
+    $("reset").addEventListener("click", async () => {
+      if (!confirm("Delete every scam voice and number?")) return;
+      await post("/api/voices/reset");
+      load();
+    });
+
+    load();
+    setInterval(load, 4000);
+  </script>
+</body>
+
+</html>

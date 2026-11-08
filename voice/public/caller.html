@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Safe Signal · Scam call player</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body {
+      display: block;
+    }
+
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 6px 0 14px;
+    }
+
+    select {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      max-width: 100%;
+    }
+
+    .now {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      min-height: 60px;
+      font-size: 18px;
+      line-height: 1.4;
+    }
+
+    .scenario.playing {
+      border-color: var(--magenta);
+      background: #2a1424;
+    }
+
+    a {
+      color: #ff8cc6;
+    }
+
+    .panel-h {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin: 22px 0 10px;
+    }
+
+    ol {
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">🔊</div>
+      <div>
+        <h1>Scam call player</h1>
+        <p class="muted">Open this on a laptop. It plays the "scammer" out loud for the iPhone to hear.</p>
+      </div>
+    </div>
+
+    <h2 class="panel-h">How to demo</h2>
+    <ol class="muted">
+      <li>On the iPhone, open Safe Signal, pick a caller ID, tap <b>Simulate incoming call</b> and <b>Accept</b>.</li>
+      <li>Hold the iPhone near this laptop's speaker and press a script below.</li>
+      <li>After the alert, tap <b>Let T-Mobile handle it</b>. The voice is saved.</li>
+      <li>Call again with a <b>different caller ID</b> and play another script with the <b>same voice</b>. It gets
+        recognized.</li>
+    </ol>
+
+    <div class="row">
+      <label for="voice">Scammer voice:</label>
+      <select id="voice"></select>
+      <button class="ghost" id="stop" style="width:auto">⏹ Stop</button>
+    </div>
+
+    <div id="list" class="scenario-list"></div>
+    <h2 class="panel-h">Now playing</h2>
+    <div class="now" id="now">—</div>
+    <p class="muted small">Tip: a real person talking works too, and is a better voiceprint test than computer voices.
+      <a href="/">Back to the app</a></p>
+  </div>
+
+  <script type="module">
+    import { SCENARIOS } from "./scenarios.js";
+    const $ = (id) => document.getElementById(id);
+    let voices = [];
+    let playing = 0;
+
+    function loadVoices() {
+      voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en"));
+      const sel = $("voice");
+      const prev = sel.value;
+      sel.replaceChildren(...voices.map((v, i) => Object.assign(document.createElement("option"), { value: i, textContent: `${v.name} (${v.lang})` })));
+      if (prev) sel.value = prev;
+    }
+    loadVoices();
+    speechSynthesis.addEventListener("voiceschanged", loadVoices);
+
+    function say(text, voice, pitch, rate) {
+      return new Promise((resolve) => {
+        const u = new SpeechSynthesisUtterance(text);
+        if (voice) u.voice = voice;
+        u.pitch = pitch;
+        u.rate = rate;
+        u.onend = u.onerror = resolve;
+        speechSynthesis.speak(u);
+      });
+    }
+
+    async function play(s, btn) {
+      const id = ++playing;
+      speechSynthesis.cancel();
+      document.querySelectorAll(".scenario").forEach((b) => b.classList.remove("playing"));
+      btn.classList.add("playing");
+      const voice = voices[Number($("voice").value)];
+      for (const line of s.lines.filter((l) => l.who === "caller")) {
+        if (id !== playing) return;
+        $("now").textContent = line.text;
+        await say(line.text, voice, s.voice.pitch, s.voice.rate * 0.95);
+        await new Promise((r) => setTimeout(r, 1400)); // pause so each sentence is its own segment
+      }
+      if (id === playing) {
+        $("now").textContent = "— done —";
+        btn.classList.remove("playing");
+      }
+    }
+
+    for (const s of SCENARIOS) {
+      const b = document.createElement("button");
+      b.className = "scenario";
+      b.innerHTML = "<strong></strong><span></span>";
+      b.querySelector("strong").textContent = s.title;
+      b.querySelector("span").textContent = s.subtitle;
+      b.addEventListener("click", () => play(s, b));
+      $("list").append(b);
+    }
+    $("stop").addEventListener("click", () => {
+      playing++;
+      speechSynthesis.cancel();
+      $("now").textContent = "—";
+      document.querySelectorAll(".scenario").forEach((b) => b.classList.remove("playing"));
+    });
+  </script>
+</body>
+
+</html>
