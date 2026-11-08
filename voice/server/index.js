@@ -10,6 +10,9 @@ import { sendAlert, photonConfigured } from "./photon.js";
 import { AiVoiceTracker, aiModelReady, warmUpAi } from "./aivoice.js";
 import { clip, pregenerate, ttsReady, AI_VOICES } from "./tts.js";
 import { SCENARIOS } from "../public/scenarios.js";
+import * as drillDb from "./drilldb.js";
+import { drillDbConfigured } from "./drilldb.js";
+import { runDrill, landingPage, startListening } from "./drill.js";
 
 const app = express();
 app.use(express.json({ limit: "64kb" }));
@@ -385,6 +388,48 @@ app.post("/api/voices/reset", (_req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- Scam drill (educational phishing simulation) ----------
+// Admin endpoints need the x-admin-key header to match DRILL_ADMIN_KEY.
+// Without that env var they stay off, because the public tunnel would expose them.
+const adminOnly = (req, res, next) => {
+  const key = process.env.DRILL_ADMIN_KEY;
+  if (!key) return res.status(503).json({ error: "Set DRILL_ADMIN_KEY in .env to enable the drill API" });
+  if (req.get("x-admin-key") !== key) return res.status(401).json({ error: "Unauthorized" });
+  if (!drillDbConfigured) return res.status(503).json({ error: "Set DATABASE_URL in .env" });
+  next();
+};
+const drillError = (res, e) => { console.error("drill error", e); res.status(500).json({ error: "Drill request failed" }); };
+
+// Add or update a participant. consent must be true for them to ever get a text.
+app.post("/api/drill/users", adminOnly, async (req, res) => {
+  const handle = str(req.body.handle, 80);
+  const name = str(req.body.name, 80);
+  if (!handle || !name) return res.status(400).json({ error: "handle and name are required" });
+  const prefs = req.body.preferences && typeof req.body.preferences === "object" ? req.body.preferences : {};
+  try {
+    res.json(await drillDb.upsertUser({ handle, name, preferences: prefs, consent: req.body.consent === true }));
+  } catch (e) { drillError(res, e); }
+});
+
+// Preview by default. Pass { "dryRun": false } to actually send.
+app.post("/api/drill/send", adminOnly, async (req, res) => {
+  try {
+    res.json(await runDrill({ handle: str(req.body.handle, 80) || undefined, dryRun: req.body.dryRun !== false }));
+  } catch (e) { drillError(res, e); }
+});
+
+app.get("/api/drill/results", adminOnly, async (_req, res) => {
+  try { res.json(await drillDb.results()); } catch (e) { drillError(res, e); }
+});
+
+// Public: the link inside the drill text. Collects nothing, teaches the red flags.
+app.get("/d/:token", async (req, res) => {
+  try {
+    const html = drillDbConfigured ? await landingPage(str(req.params.token, 40)) : null;
+    html ? res.type("html").send(html) : res.status(404).send("Not found");
+  } catch (e) { console.error("landing error", e); res.status(500).send("Error"); }
+});
+
 // Forget ended calls after 30 minutes.
 setInterval(() => {
   for (const [id, c] of calls) if (c.endedAt && Date.now() - c.endedAt > 30 * 60e3) calls.delete(id);
@@ -394,6 +439,7 @@ const port = Number(process.env.PORT) || 3000;
 if (modelsReady) warmUp();
 warmUpAi();
 if (ttsReady) pregenerate(AI_SCRIPTS.flatMap((s) => s.lines)); // background, cached on disk
+startListening(); // real-time scam-drill replies via Spectrum
 server.listen(port, () => {
   console.log(`AI voice detector: ${aiModelReady ? "ready" : "missing"} · AI voice clips: ${ttsReady ? "ready" : "missing"}`);
   console.log(`Safe Signal running at http://localhost:${port}`);

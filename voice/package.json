@@ -16,7 +16,9 @@
     "@photon-ai/api": "0.5.0",
     "express": "^5.1.0",
     "onnxruntime-node": "^1.31.1",
+    "pg": "8.13.1",
     "sherpa-onnx-node": "^2.0.1",
+    "spectrum-ts": "12.15.0",
     "ws": "^8.22.1"
   }
 }

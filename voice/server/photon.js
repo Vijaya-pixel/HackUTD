@@ -44,6 +44,64 @@ async function findConversation() {
   return null;
 }
 
+// Send a text to any participant who has already texted the Photon line.
+// Used by the scam drill. Returns { status: "sent" | "simulated", ... }.
+const conversations = new Map(); // handle -> { spaceId, senderId }
+
+async function findConversationFor(handle) {
+  if (conversations.has(handle)) return conversations.get(handle);
+  const createdSince = new Date(Date.now() - 30 * 864e5).toISOString();
+  let pageToken;
+  for (let i = 0; i < 5; i++) {
+    const page = await photon.projects.listMessages({
+      path: { id: PHOTON_PROJECT_ID },
+      query: { createdSince, direction: "received", order: "desc", pageSize: 100, platform: "imessage", ...(pageToken ? { pageToken } : {}) },
+    });
+    const m = page.items.find((x) => x.sentBy?.handle === handle && x.receivedBy?.kind === "agent");
+    if (m) {
+      const conv = { spaceId: m.space.id, senderId: m.receivedBy.id };
+      conversations.set(handle, conv);
+      return conv;
+    }
+    pageToken = page.nextPageToken;
+    if (!pageToken) break;
+  }
+  return null;
+}
+
+// Newest-first incoming texts from `handle` to our agent, since `sinceIso`
+// (exclusive). Used to detect replies for the scripted conversation drill.
+export async function repliesSince(handle, sinceIso) {
+  if (!photon) return [];
+  const page = await photon.projects.listMessages({
+    path: { id: PHOTON_PROJECT_ID },
+    query: { createdSince: sinceIso, direction: "received", order: "asc", pageSize: 50, platform: "imessage" },
+  });
+  return page.items.filter((x) => x.sentBy?.handle === handle && x.receivedBy?.kind === "agent" && x.createdAt > sinceIso);
+}
+
+export async function sendTo(handle, text, idempotencyKey = randomUUID()) {
+  if (!photon || !PHOTON_API_KEY || !PHOTON_PROJECT_ID?.startsWith("pho_prj_")) {
+    return { status: "simulated", reason: "Photon credentials not set", text };
+  }
+  try {
+    const conv = await findConversationFor(handle);
+    if (!conv) return { status: "simulated", reason: `${handle} has not texted the Photon line yet`, text };
+    await photon.projects.sendMessage({
+      path: { id: PHOTON_PROJECT_ID },
+      headers: { "idempotency-key": `drill:${idempotencyKey}` },
+      body: { spaceId: conv.spaceId, senderId: conv.senderId, content: { type: "text", format: "plain", text } },
+    });
+    return { status: "sent", text };
+  } catch (error) {
+    const reason = error instanceof ApiError
+      ? `Photon API error ${error.status} (request ${error.requestId ?? "unknown"})`
+      : "Photon request failed";
+    console.error(reason);
+    return { status: "simulated", reason, text };
+  }
+}
+
 export async function sendAlert(text) {
   if (!photonConfigured) {
     return { status: "simulated", reason: "Photon credentials not set", text };

@@ -52,6 +52,29 @@ Pages:
 
 Set `PHOTON_PROJECT_ID` (`pho_prj_…`), `PHOTON_API_KEY`, and `PHOTON_ALERT_RECIPIENT` in `.env`. Text the assigned Photon line once from the recipient phone, then restart.
 
+## Scam text drill (educator)
+
+Sends opted-in people a fake scam text tailored to their preferences, records whether they tap the link, and teaches them the red flags.
+
+- Data lives in Postgres (`DATABASE_URL`). The tables `drill_users` and `drill_messages` are created automatically.
+- Only users with `consent: true` are ever texted. Each person must text the Photon line once first.
+- The link goes to `/d/<token>`. That page collects nothing and says right away that it was a drill. A debrief text goes out after `DRILL_DEBRIEF_MINUTES` (default 10) even if they never tap.
+- Admin endpoints need the header `x-admin-key: $DRILL_ADMIN_KEY`. Set `PUBLIC_BASE_URL` to your tunnel URL so the links work on phones.
+
+```powershell
+$h = @{ "x-admin-key" = "<DRILL_ADMIN_KEY>" }
+# add a participant
+Invoke-RestMethod -Method Post http://localhost:3000/api/drill/users -Headers $h -ContentType application/json `
+  -Body '{"handle":"+14695550123","name":"Alex Kim","preferences":{"bank":"Chase","carrier":"T-Mobile","shops":["Amazon"],"interests":["Mavs"]},"consent":true}'
+# preview (default), then send for real
+Invoke-RestMethod -Method Post http://localhost:3000/api/drill/send -Headers $h -ContentType application/json -Body '{}'
+Invoke-RestMethod -Method Post http://localhost:3000/api/drill/send -Headers $h -ContentType application/json -Body '{"dryRun":false}'
+# who fell for it
+Invoke-RestMethod http://localhost:3000/api/drill/results -Headers $h
+```
+
+Preference keys used: `bank`, `carrier`, `shops` (array), `interests` (array).
+
 ## AI voice detection
 
 The caller's speech (silence removed) is scored in ~4 s windows by [Spectra-AASIST3](https://huggingface.co/Limitless-8/spectra-aasist3-int8-audio-deepfake). After 2+ windows agree (median ≥ `AI_VOICE_THRESHOLD`, default 0.85), the customer sees "This voice sounds AI-generated" and can tap **Flag as AI caller**. That saves the voice with a 🤖 AI voice tag, and future calls show "Uses an AI voice" at ring time.
