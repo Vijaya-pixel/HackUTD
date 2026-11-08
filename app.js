@@ -389,6 +389,27 @@ function startCall(scn) {
   api.post('/calls/simulate', { lineId: curLine().lineId, scenario: scn }).catch(fail);
 }
 function startTimer() { clearInterval(callTimer); callTimer = setInterval(() => { if (!S.call || S.call.phase !== 'connected') return; S.call.t++; renderOverlay(); }, 1000); }
+const doneCalls = new Set(); // calls the user dismissed with Done/Report; a resync must not bring them back
+/** Replace the overlay state with the server's snapshot of the current call. Used when the stream (re)connects,
+    when the page wakes up (Safari suspends the page while the phone is on a call) and as a polling safety net. */
+function applySnapshot(snap) {
+  if (!snap || doneCalls.has(snap.id)) return;
+  if (snap.lineId !== curLine().lineId) return;
+  const c = S.call;
+  if (c && c.id === snap.id) {
+    const changed = c.phase !== snap.phase || c.transcript.length !== snap.transcript.length || c.alerts.length !== snap.alerts.length;
+    if (!changed) return;
+    c.phase = snap.phase; c.transcript = snap.transcript; c.alerts = snap.alerts; c.endedBy = snap.endedBy; c.outcome = snap.outcome; c.label = snap.label || c.label;
+    if (snap.phase === 'connected') { c.t = snap.t; startTimer(); } else if (snap.phase === 'ended') clearInterval(callTimer);
+  } else {
+    if (c && c.phase !== 'ended' && c.id !== snap.id && snap.phase === 'ended') return; // keep a live call over an old ended one
+    S.call = { id: snap.id, lineId: snap.lineId, scn: snap.scenario, num: snap.num, loc: snap.loc, label: snap.label, risk: snap.risk, callerId: snap.callerId, remote: snap.remote,
+      transcript: snap.transcript, alerts: snap.alerts, dismissed: false, t: snap.t, phase: snap.phase, endedBy: snap.endedBy, outcome: snap.outcome };
+    if (snap.phase === 'connected') startTimer(); else clearInterval(callTimer);
+  }
+  renderOverlay();
+}
+function syncCall() { return api.get(`/calls/current?lineId=${curLine().lineId}`).then(applySnapshot).catch(() => {}); }
 function onCallEvent(ev) {
   if (ev.phase === 'blocked') { toast(`ScamShield blocked a ${ev.label} call from ${ev.num}`, 'block'); return; }
   if (ev.phase === 'ringing' || ev.phase === 'screening') {
@@ -412,8 +433,8 @@ function callAction(a) {
   else if (a === 'hangup') post('end?by=you');
   else if (a === 'takeover') post('takeover');
   else if (a === 'dismiss') { c.dismissed = true; renderOverlay(); }
-  else if (a === 'done') { S.call = null; clearInterval(callTimer); renderOverlay(); }
-  else if (a === 'report') { const num = c.num; S.call = null; clearInterval(callTimer); renderOverlay(); openSheet('report', num); }
+  else if (a === 'done') { doneCalls.add(c.id); S.call = null; clearInterval(callTimer); renderOverlay(); }
+  else if (a === 'report') { doneCalls.add(c.id); const num = c.num; S.call = null; clearInterval(callTimer); renderOverlay(); openSheet('report', num); }
 }
 const fmtTime = t => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 function callHtml() {
@@ -663,6 +684,7 @@ async function boot() {
   try { await loadAll(); } catch (e) { S.error = e.message; render(); return; }
   render(true);
   if (!es) es = api.events({
+    open: syncCall,
     call: onCallEvent,
     activity: a => { if (a.line !== curLine().lineId) return; S.activity = [a, ...S.activity.filter(x => x.id !== a.id && !(x.e164 === a.e164 && x.type === a.type))]; refreshStats().catch(() => render()); },
     line: l => { const L = LINES.find(x => x.lineId === l.id); if (L) { L.toggles = l.toggles; if (L === curLine()) { S.toggles = l.toggles; render(); } } },
@@ -676,6 +698,11 @@ async function boot() {
       if (ev.state && current() === 'learn') loadLearn().catch(() => {});
     },
   });
+  // Resync the call overlay whenever the page wakes up, and poll as a safety net while visible
+  // (iOS Safari suspends the page and drops the stream while the phone is on a call).
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncCall(); });
+  window.addEventListener('pageshow', () => syncCall());
+  setInterval(() => { if (document.visibilityState === 'visible') syncCall(); }, 3000);
   // Deep link from a practice text: /?lesson=<sessionId>
   const want = new URLSearchParams(location.search).get('lesson');
   if (want) { history.replaceState(null, '', location.pathname); S.tab = 'learn'; S.stack = []; render(true); openLesson(want).catch(fail); }

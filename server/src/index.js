@@ -180,7 +180,7 @@ export async function incomingCall({ lineId, e164: num, scenario = 'custom', sou
     return { outcome: decision.outcome, decision, activity: act };
   }
   const id = crypto.randomUUID();
-  const call = { id, lineId, e164: num, scenario, source, phase: 'ringing', transcript: '', decision, started: Date.now(), timers: [], alerts: [], rep };
+  const call = { id, lineId, e164: num, scenario, source, phase: 'ringing', transcript: '', decision, started: Date.now(), timers: [], alerts: [], rep, callerId: !!line.toggles?.callerId };
   const screen = (line.toggles?.screener && decision.outcome === 'unknown') || scenario === 'screener';
   if (screen) call.phase = 'screening';
   live.set(id, call);
@@ -238,12 +238,28 @@ async function addTranscript(id, text, who = 'caller') {
   const verdict = await judgeTranscript(call.transcript);
   call.verdict = verdict;
   if (t.aiVoice && verdict.synthetic_voice_hint && !call.alerts.includes('ai')) {
-    call.alerts.push('ai'); publish('call', { phase: 'alert', id, kind: 'ai', title: 'AI voice detected', text: 'The caller appears to be using a synthetic or cloned voice. Proceed with caution.', verdict });
+    call.alerts.push('ai'); publishAlert(call, { kind: 'ai', title: 'AI voice detected', text: 'The caller appears to be using a synthetic or cloned voice. Proceed with caution.', verdict });
   }
   if (t.inCall && verdict.confidence >= 0.8 && !call.alerts.includes('fraud')) {
-    call.alerts.push('fraud'); publish('call', { phase: 'alert', id, kind: 'fraud', title: 'Fraud call detected', text: verdict.one_line_warning, verdict });
+    call.alerts.push('fraud'); publishAlert(call, { kind: 'fraud', title: 'Fraud call detected', text: verdict.one_line_warning, verdict });
     await maybeGuardianAlert(line, call.e164, call.decision, verdict);
   }
+}
+
+function publishAlert(call, a) {
+  (call.alertDetails ||= []).push({ kind: a.kind, title: a.title, text: a.text });
+  publish('call', { phase: 'alert', id: call.id, ...a });
+}
+
+/** Snapshot of a call for a client that (re)connects mid-call, e.g. Safari suspended during a phone call. */
+function callSnapshot(call) {
+  const transcript = (call.transcript || '').split('\n').filter(Boolean).map(l => { const m = l.match(/^([^:]+):\s*(.*)$/); return m ? { who: m[1], text: m[2] } : { who: 'caller', text: l }; });
+  return {
+    id: call.id, lineId: call.lineId, phase: call.phase, num: pretty(call.e164), e164: call.e164, label: call.decision.label,
+    loc: call.rep?.location, risk: call.decision.risk, callerId: !!call.callerId, scenario: call.scenario, remote: !!call.remote,
+    transcript, alerts: call.alertDetails || [], endedBy: call.endedBy, outcome: call.outcome,
+    t: call.phase === 'connected' ? Math.round((Date.now() - call.started) / 1000) : 0, endedAt: call.endedAt || null,
+  };
 }
 
 function scheduleScript(call) {
@@ -268,14 +284,24 @@ async function endCall(id, by, outcomeHint, extra = {}) {
     else if (call.decision.outcome === 'identified') outcome = 'identified';
     else outcome = call.phase === 'screening' ? 'screened' : 'allowed';
   }
-  call.phase = 'ended';
+  call.phase = 'ended'; call.endedBy = by; call.outcome = outcome; call.endedAt = Date.now();
   const act = outcome === 'allowed' ? null : await logEvent(call.lineId, call.e164, outcome, {
     category: extra.category || (outcome === 'fraud' ? 'Fraud detected' : outcome === 'ai' ? 'AI voice detected' : call.decision.category),
     risk: call.decision.risk, note: extra.note || call.verdict?.one_line_warning || null, transcript: call.transcript || null, verdict: call.verdict || null, duration_s: duration, source: call.source });
   publish('call', { phase: 'ended', id, endedBy: by, outcome, duration, activity: act });
-  setTimeout(() => live.delete(id), 60_000);
+  setTimeout(() => live.delete(id), 5 * 60_000);
   return { outcome, activity: act };
 }
+
+/** The call a reconnecting client should be showing: the active call on the line, else one that ended in the last few minutes. */
+app.get('/api/calls/current', c => {
+  const lineId = c.req.query('lineId');
+  const calls = [...live.values()].filter(x => !lineId || x.lineId === lineId);
+  const active = calls.filter(x => x.phase !== 'ended').sort((a, b) => b.started - a.started)[0];
+  const recent = calls.filter(x => x.phase === 'ended' && Date.now() - x.endedAt < 3 * 60_000).sort((a, b) => b.endedAt - a.endedAt)[0];
+  const call = active || recent;
+  return c.json(call ? callSnapshot(call) : null);
+});
 
 app.post('/api/calls/simulate', async c => {
   const { lineId, scenario = 'scam', num } = await c.req.json();
@@ -333,6 +359,8 @@ const callDeps = { incomingCall, addTranscript, endCall, live, getLine, publish 
 registerTwilio(app, callDeps);
 
 /* ---------- static UI ---------- */
+// The UI is demoed from phones over ngrok: make Safari revalidate scripts instead of keeping a stale copy.
+app.use('/*', async (c, next) => { await next(); if (!c.req.path.startsWith('/api')) c.header('Cache-Control', 'no-cache'); });
 app.use('/*', serveStatic({ root: webRoot }));
 
 app.onError((err, c) => { console.error(err); return c.json({ error: err.message }, err.status || 500); });
