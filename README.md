@@ -1,10 +1,18 @@
-# Safe Signal — Education Branch
+# Safe Signal — HackUTD 2026
 
 HackUTD 2026 · T-Mobile "Safe Signal" challenge · Photon track
 
+A T-Life feature extension that protects customers from scams through two complementary systems:
+- **Education branch** — interactive SMS practice sessions that teach users to spot scams by experiencing them safely
+- **ScamShield branch** — Hiya Spam Blocker capabilities (caller ID, AI voice detection, in-call fraud alerts, repeat-scam-caller voice detection, Scam Academy) integrated into T-Life's existing ScamShield
+
+---
+
+## Education Backend (Safe Signal)
+
 Protect customers from scams through interactive practice sessions delivered over iMessage/SMS.
 
-## Quick start
+### Quick start
 
 ```bash
 # Prerequisites: Node 20+, pnpm 9+
@@ -27,7 +35,7 @@ pnpm dev:mobile
 pnpm eval
 ```
 
-## Architecture
+### Architecture
 
 ```
 apps/
@@ -37,7 +45,7 @@ packages/
   shared/        Types, Zod schemas, detection module, 12 scenario JSONs, eval harness
 ```
 
-## Server API
+### Server API
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -58,24 +66,16 @@ packages/
 | POST | `/webhooks/photon` | Photon inbound webhook (Standard Webhooks) |
 | GET | `/health` | Health check |
 
-## Database
+### Database
 
 Postgres everywhere, via Drizzle ORM:
 
 | Mode | When | Notes |
 |------|------|-------|
-| **TigerData** (Timescale Cloud) | `DATABASE_URL` is set | Production/demo DB. `messages` is created as a **hypertable** partitioned on `ts`, so time-bucketed analytics (`time_bucket`, continuous aggregates) work out of the box. |
-| **PGlite** (embedded Postgres) | `DATABASE_URL` is empty | Zero-setup local fallback, persisted under `DATABASE_PATH` (default `./data/pglite`). Same SQL, same code path. Single process only: stop the dev server before running `pnpm seed`. |
+| **TigerData** (Timescale Cloud) | `DATABASE_URL` is set | Production/demo DB. `messages` is created as a **hypertable** partitioned on `ts`. |
+| **PGlite** (embedded Postgres) | `DATABASE_URL` is empty | Zero-setup local fallback, persisted under `DATABASE_PATH` (default `./data/pglite`). |
 
-Set up TigerData:
-
-1. Create a free service at https://console.cloud.timescale.com (Tiger Cloud).
-2. Copy the connection string and put it in `apps/server/.env` as `DATABASE_URL=postgres://tsdbadmin:...@...tsdb.cloud.timescale.com:.../tsdb?sslmode=require`. Keep `DATABASE_SSL_CA=./certs/timescale-ca.pem`: Tiger Cloud uses a private CA (see `apps/server/certs/README.md`), and that file lets the driver verify the chain and hostname.
-3. `pnpm seed` then `pnpm dev:server`. The startup log prints `DB: tigerdata (...)  |  hypertable: yes`, and `GET /health` reports the same under `db`.
-
-Tables are created on startup (`apps/server/src/db/client.ts`); schema lives in `apps/server/src/db/schema.ts`.
-
-## Environment variables
+### Environment variables
 
 See `.env.example` for the full list. Key variables:
 
@@ -85,10 +85,56 @@ See `.env.example` for the full list. Key variables:
 - `DATABASE_URL` — TigerData / Postgres connection string (empty = embedded PGlite)
 - `SESSION_TTL_DAYS` — auto-delete sessions after N days (default 30)
 
-## Demo
+See [DEMO.md](./DEMO.md) for the 3-minute demo script and [PRIVACY.md](./PRIVACY.md) for data storage details.
 
-See [DEMO.md](./DEMO.md) for the 3-minute demo script.
+---
 
-## Privacy
+## ScamShield UI + Voice (Photon SMS Feature)
 
-See [PRIVACY.md](./PRIVACY.md) for data storage, redaction, and retention details.
+A T-Life feature extension that brings Hiya Spam Blocker's capabilities into T-Mobile's existing ScamShield.
+
+### Run
+
+Any static server works:
+
+    python -m http.server 5173
+
+then open http://localhost:5173. Start the backend in `server/` first (see Backend below).
+
+### Feature map (Hiya → T-Life ScamShield)
+
+| Hiya feature | In this app | Tier |
+|---|---|---|
+| Caller ID | Protection > Caller ID toggle | Free |
+| Block spam before it rings | Protection > Scam Block toggle | Free |
+| Report spam numbers | Report tile, activity detail, post-call | Free |
+| AI voice & deepfake detection | Protection toggle + in-call alert card | Premium |
+| In-call fraud detection | Protection toggle + in-call alert card | Premium |
+| Call Screener | Protection toggle + screening transcript | Premium |
+| Family setup | Family protection + per-line chips | Free |
+
+ScamShield Premium is priced at $4/mo per line.
+
+### Backend (server/)
+
+Node 24, Hono, `pg`, Gemini (`@google/genai`), TigerData (TimescaleDB).
+
+```bash
+cd server
+npm install
+npm run migrate      # creates tables, hypertable, continuous aggregate, retention policy
+npm run seed         # loads lines, reputation and 30 days of call events
+npm start            # http://localhost:8787
+```
+
+Config lives in `server/.env`: `DATABASE_URL`, `GEMINI_API_KEY`, `PHOTON_*`, `TWILIO_*`.
+
+### Protect / Train / Adapt
+
+- **Protect**: caller ID, Scam Block, Call Screener, in-call fraud alerts, repeat-caller voice alerts
+- **Train (Scam Academy, `drill.html`)**: opt-in AI-written practice scams over iMessage with difficulty levels, Scam Survival Score
+- **Adapt**: what Protect sees feeds `/api/insights`, recommending Academy lessons and showing a "Threats we're seeing" card
+
+### Photon (messaging)
+
+Uses Spectrum SDK (`spectrum-ts`). Credentials: `PHOTON_PROJECT_ID` and `PHOTON_PROJECT_SECRET`. Inbound texts arrive on the stream (no webhook). `DEMO_PHONE` maps your real phone to Anne's line (`DEMO_LINE_ID`).

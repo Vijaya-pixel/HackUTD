@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .env
+server/.env
 *.db
 *.db-shm
 *.db-wal
@@ -9,6 +10,8 @@ data/
 .turbo/
 coverage/
 *.tsbuildinfo
+*.log
+server/*.log
 
 # local secrets / notes
 *credentials*.txt

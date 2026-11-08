@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#000000" />
+  <title>Scammer phone · Safe Signal test</title>
+  <link rel="stylesheet" href="ios.css" />
+</head>
+
+<body>
+  <div class="device-wrap">
+    <div class="device">
+      <div class="screen">
+
+        <!-- Dialer -->
+        <section id="v-dial" class="view dialer active">
+          <div class="scroll">
+            <h1>😈 Scammer phone</h1>
+            <p style="color:var(--ios-label2);margin:4px 0 14px;font-size:15px">For testing Safe Signal. Pick a fake
+              caller ID and call the customer.</p>
+
+            <div class="group-h">Caller ID to show</div>
+            <div class="chips" id="numbers"></div>
+            <input id="custom-number" class="field" inputmode="tel" placeholder="Or type any number"
+              style="background:#1c1c1e" />
+
+            <div class="line-status" id="line"><span class="dot"></span><span id="line-text">Connecting…</span></div>
+
+            <div class="group-h">Voice</div>
+            <div class="seg" id="voice-mode" style="background:#1c1c1e">
+              <button data-mode="mine" class="on">🗣️ My voice</button>
+              <button data-mode="ai">🤖 AI voice</button>
+            </div>
+            <div class="chips hidden" id="ai-voices" style="margin-top:8px"></div>
+            <p class="hidden" id="ai-help"
+              style="color:var(--ios-label2);font-size:13px;line-height:1.4;margin:6px 0 0">During the call, tap a line
+              and an AI voice (Kokoro neural TTS) says it into the call. Your mic is paused while it talks.</p>
+
+            <div class="group-h" id="script-h">Script ideas (read them out loud)</div>
+            <div class="script">
+              <div class="tabs" id="tabs"></div>
+              <ol id="script"></ol>
+            </div>
+            <p style="color:var(--ios-label3);font-size:13px;line-height:1.4">Tip: call once, get handed off, then call
+              again from a <b>different</b> number with a different script. Same voice gets recognized.</p>
+          </div>
+          <div class="end-row" style="padding-top:10px">
+            <button class="circle green" id="btn-call" aria-label="Call"><svg>
+                <use href="#i-phone" />
+              </svg></button>
+          </div>
+        </section>
+
+        <!-- Calling / in call -->
+        <section id="v-call" class="view incall call-bg">
+          <div class="cid">
+            <div class="cid-number">Customer</div>
+            <div class="cid-sub" id="c-status">calling…</div>
+            <div class="ai-line" id="c-from"></div>
+          </div>
+          <div class="ai-lines hidden" id="ai-lines"></div>
+          <div class="spacer"></div>
+          <div class="grid6">
+            <div class="key" id="key-mute"><button class="circle" aria-label="Mute"><svg>
+                  <use href="#i-mute" />
+                </svg></button>mute</div>
+            <div class="key disabled"><button class="circle"><svg>
+                  <use href="#i-keypad" />
+                </svg></button>keypad</div>
+            <div class="key" id="key-speaker"><button class="circle" aria-label="Audio"><svg>
+                  <use href="#i-speaker" />
+                </svg></button>audio</div>
+            <div class="key disabled"><button class="circle"><svg>
+                  <use href="#i-add" />
+                </svg></button>add call</div>
+            <div class="key disabled"><button class="circle"><svg>
+                  <use href="#i-video" />
+                </svg></button>FaceTime</div>
+            <div class="key disabled"><button class="circle"><svg>
+                  <use href="#i-person" />
+                </svg></button>contacts</div>
+          </div>
+          <div class="end-row"><button class="circle red" id="btn-end" aria-label="End call"><svg>
+                <use href="#i-phone" />
+              </svg></button></div>
+        </section>
+
+        <!-- Ended -->
+        <section id="v-ended" class="view ended call-bg">
+          <div class="cid">
+            <div class="cid-number">Customer</div>
+            <div class="status" id="e-status">Call Ended</div>
+          </div>
+          <div class="notice hidden" id="e-notice" style="margin-top:28px"></div>
+          <div class="spacer" style="flex:1"></div>
+          <button class="btn gray" id="btn-back">Back to dialer</button>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="icons.js"></script>
+  <script type="module" src="scammer.js"></script>
+</body>
+
+</html>

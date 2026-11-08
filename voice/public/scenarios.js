@@ -1,0 +1,76 @@
+// Synthetic call scripts. No real customer data.
+// speakerId stands in for "this person's actual voice": the same speakerId on
+// a different number simulates a scammer calling back from a new number.
+
+export const SCENARIOS = [
+  {
+    id: "irs",
+    title: "IRS gift card scam",
+    subtitle: "First call from this scammer",
+    callerLabel: "Unknown caller",
+    number: "+1 (469) 555-0142",
+    location: "Dallas, TX",
+    speakerId: "scammer_miller",
+    voice: { pitch: 0.8, rate: 1.05 },
+    lines: [
+      { who: "caller", text: "Hello, this is Officer Daniel Miller from the IRS, badge number four seven two one." },
+      { who: "me", text: "Okay... what is this about?" },
+      { who: "caller", text: "Our records show you owe back taxes. There is a warrant for your arrest in your county." },
+      { who: "me", text: "What? I always pay my taxes." },
+      { who: "caller", text: "To stop the arrest you must pay immediately. Go to the store and buy Google Play gift cards." },
+      { who: "caller", text: "Do not hang up, and don't tell anyone at the store what they are for." },
+      { who: "me", text: "How much do I need?" },
+      { who: "caller", text: "Two thousand dollars. Then read me the code on the back of each card." },
+    ],
+  },
+  {
+    id: "repeat",
+    title: "Same scammer, new number",
+    subtitle: "Voiceprint catches him (run IRS + hand off first)",
+    callerLabel: "Chase Bank",
+    number: "+1 (214) 555-0199",
+    location: "Plano, TX",
+    speakerId: "scammer_miller",
+    voice: { pitch: 0.8, rate: 1.05 },
+    lines: [
+      { who: "caller", text: "Hi, I'm calling from the Chase fraud department about a charge on your card." },
+      { who: "me", text: "Oh no, what charge?" },
+      { who: "caller", text: "Someone spent nine hundred dollars at an electronics store. Your account will be frozen today." },
+      { who: "caller", text: "I just sent you a verification code. Please read me the code so I can block it." },
+      { who: "me", text: "Um, okay, it says..." },
+    ],
+  },
+  {
+    id: "grandkid",
+    title: "Grandparent emergency scam",
+    subtitle: "Fake grandson asks for bail money",
+    callerLabel: "Unknown caller",
+    number: "+1 (972) 555-0177",
+    location: "Garland, TX",
+    speakerId: "scammer_jake",
+    voice: { pitch: 1.25, rate: 1.15 },
+    lines: [
+      { who: "caller", text: "Grandma? It's me. I'm in big trouble." },
+      { who: "me", text: "Tyler? Is that you? You sound different." },
+      { who: "caller", text: "I have a cold. I was in a car accident and the police put me in jail." },
+      { who: "caller", text: "I need two thousand dollars for bail right now. Please don't tell mom." },
+      { who: "caller", text: "My lawyer says you can pay with Zelle or gift cards." },
+    ],
+  },
+  {
+    id: "safe",
+    title: "Normal call (no alert)",
+    subtitle: "Pharmacy reminder, shows no false alarm",
+    callerLabel: "CVS Pharmacy",
+    number: "+1 (972) 555-0110",
+    location: "Richardson, TX",
+    speakerId: "cvs_pharmacy",
+    voice: { pitch: 1.1, rate: 1.0 },
+    lines: [
+      { who: "caller", text: "Hi, this is CVS Pharmacy on Campbell Road calling with a reminder." },
+      { who: "caller", text: "Your prescription is ready for pickup. We're open until nine tonight." },
+      { who: "me", text: "Great, thank you. I'll come by after work." },
+      { who: "caller", text: "Sounds good. Have a nice day!" },
+    ],
+  },
+];
