@@ -392,7 +392,17 @@ function startCall(scn) {
   api.post('/calls/simulate', { lineId: curLine().lineId, scenario: scn }).catch(fail);
 }
 function startTimer() { clearInterval(callTimer); callTimer = setInterval(() => { if (!S.call || S.call.phase !== 'connected') return; S.call.t++; renderOverlay(); }, 1000); }
-const doneCalls = new Set(); // calls the user dismissed with Done/Report; a resync must not bring them back
+const DONE_KEY = 'scamshield:doneCalls', LAST_KEY = 'scamshield:lastCall';
+const doneCalls = new Set((() => { try { return JSON.parse(localStorage.getItem(DONE_KEY)) || []; } catch { return []; } })()); // dismissed calls; a resync must not bring them back
+function keepEndedCall() { try { if (S.call && S.call.phase === 'ended' && !doneCalls.has(S.call.id)) localStorage.setItem(LAST_KEY, JSON.stringify(S.call)); } catch {} }
+function dismissCall(id) {
+  doneCalls.add(id);
+  try { localStorage.setItem(DONE_KEY, JSON.stringify([...doneCalls].slice(-50))); const last = JSON.parse(localStorage.getItem(LAST_KEY) || 'null'); if (!last || last.id === id) localStorage.removeItem(LAST_KEY); } catch {}
+}
+function restoreEndedCall() {
+  if (S.call) return;
+  try { const last = JSON.parse(localStorage.getItem(LAST_KEY) || 'null'); if (last && last.phase === 'ended' && !doneCalls.has(last.id)) { S.call = last; renderOverlay(); } } catch {}
+}
 /** Replace the overlay state with the server's snapshot of the current call. Used when the stream (re)connects,
     when the page wakes up (Safari suspends the page while the phone is on a call) and as a polling safety net. */
 function applySnapshot(snap) {
@@ -404,12 +414,13 @@ function applySnapshot(snap) {
     if (!changed) return;
     c.phase = snap.phase; c.transcript = snap.transcript; c.alerts = snap.alerts; c.endedBy = snap.endedBy; c.outcome = snap.outcome; c.label = snap.label || c.label;
     if (snap.summary) { c.summary = snap.summary; c.forwarded = true; c.risk = snap.risk; }
-    if (snap.phase === 'connected') { c.t = snap.t; startTimer(); } else if (snap.phase === 'ended') clearInterval(callTimer);
+    if (snap.phase === 'connected') { c.t = snap.t; startTimer(); } else if (snap.phase === 'ended') { clearInterval(callTimer); keepEndedCall(); }
   } else {
     if (c && c.phase !== 'ended' && c.id !== snap.id && snap.phase === 'ended') return; // keep a live call over an old ended one
     S.call = { id: snap.id, lineId: snap.lineId, scn: snap.scenario, num: snap.num, loc: snap.loc, label: snap.label, risk: snap.risk, callerId: snap.callerId, remote: snap.remote,
       transcript: snap.transcript, alerts: snap.alerts, dismissed: false, t: snap.t, phase: snap.phase, endedBy: snap.endedBy, outcome: snap.outcome, summary: snap.summary || undefined, forwarded: snap.forwarded };
     if (snap.phase === 'connected') startTimer(); else clearInterval(callTimer);
+    if (snap.phase === 'ended') keepEndedCall();
   }
   renderOverlay();
 }
@@ -426,7 +437,7 @@ function onCallEvent(ev) {
   if (ev.phase === 'transcript') S.call.transcript.push({ who: ev.who, text: ev.text });
   if (ev.phase === 'alert') S.call.alerts.push({ kind: ev.kind, title: ev.title, text: ev.text });
   if (ev.phase === 'connected') { S.call.phase = 'connected'; S.call.t = 0; startTimer(); }
-  if (ev.phase === 'ended') { S.call.phase = 'ended'; S.call.endedBy = ev.endedBy; S.call.outcome = ev.outcome; clearInterval(callTimer); }
+  if (ev.phase === 'ended') { S.call.phase = 'ended'; S.call.endedBy = ev.endedBy; S.call.outcome = ev.outcome; clearInterval(callTimer); keepEndedCall(); }
   renderOverlay();
 }
 function callAction(a) {
@@ -438,8 +449,8 @@ function callAction(a) {
   else if (a === 'hangup') post('end?by=you');
   else if (a === 'takeover') post('takeover');
   else if (a === 'dismiss') { c.dismissed = true; renderOverlay(); }
-  else if (a === 'done') { doneCalls.add(c.id); S.call = null; clearInterval(callTimer); renderOverlay(); }
-  else if (a === 'report') { doneCalls.add(c.id); const num = c.num; S.call = null; clearInterval(callTimer); renderOverlay(); openSheet('report', num); }
+  else if (a === 'done') { dismissCall(c.id); S.call = null; clearInterval(callTimer); renderOverlay(); }
+  else if (a === 'report') { dismissCall(c.id); const num = c.num; S.call = null; clearInterval(callTimer); renderOverlay(); openSheet('report', num); }
 }
 const fmtTime = t => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 /** Card shown while the subscriber's phone rings: what the caller told the screener and what ScamShield makes of it. */
@@ -483,7 +494,10 @@ function callHtml() {
   if (c.phase === 'ended') {
     const byShield = c.endedBy === 'ScamShield';
     const msg = { fraud: 'This number was flagged as fraud and added to your activity. The verdict came from the live transcript.', screened: 'The caller would not identify themselves and was hung up on. Nothing rang on your phone.', scam: c.summary ? 'ScamShield interviewed this caller, judged it a likely scam and ended the call. Nothing rang on your phone.' : 'This Scam Likely call was logged. Turn on Scam Block to stop calls like this before they ring.', ai: 'A synthetic voice was detected on this call and it was logged.', forwarded: 'ScamShield interviewed this caller and connected them to you. The summary is saved in your activity.', missed: 'ScamShield interviewed this caller, but the call was not picked up. The summary is saved in your activity.' }[c.outcome] || 'Call logged in your ScamShield activity.';
-    body = `<div class="summary"><div class="orb">${ico(byShield ? 'shieldCheck' : 'phoneOff')}</div><h3>${byShield ? 'Call ended by ScamShield' : 'Call ended'}</h3><p>${msg}</p>${c.summary ? `<p class="recap">${esc(c.summary.summary)}</p>` : ''}</div>`;
+    body = c.summary
+      ? `<div class="summary compact"><h3>${byShield ? 'Call ended by ScamShield' : 'Call ended'}</h3><p>${msg}</p></div>${screeningCard(c)}`
+      : `<div class="summary"><div class="orb">${ico(byShield ? 'shieldCheck' : 'phoneOff')}</div><h3>${byShield ? 'Call ended by ScamShield' : 'Call ended'}</h3><p>${msg}</p></div>`;
+    body = `<button class="call-close" data-act="callAct" data-val="done" aria-label="Close summary">${ico('x')}</button>` + body;
     controls = `<div style="width:100%;display:flex;flex-direction:column;gap:10px"><button class="btn primary" data-act="callAct" data-val="report">${ico('flag')} Report this number</button><button class="btn outline-light" data-act="callAct" data-val="done">Done</button></div>`;
   }
   // iPhone call-screen layout: caller label line, big number, location, then the ScamShield state line.
@@ -739,6 +753,7 @@ async function boot() {
   window.addEventListener('pageshow', () => syncCall());
   setInterval(() => { if (document.visibilityState === 'visible') syncCall(); }, 3000);
   // Deep link from a practice text: /?lesson=<sessionId>
+  restoreEndedCall();
   // Trap link from a practice text (/p/:token redirects here): land on Buddy taking the hit.
   const trapId = new URLSearchParams(location.search).get('trap');
   if (trapId) { history.replaceState(null, '', location.pathname); startTrap(trapId); return; }
